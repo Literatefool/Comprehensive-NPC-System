@@ -1,6 +1,7 @@
 # UseAnimationController - Client-Side Physics Optimization Plan
 
 ### This is a work-in-progress documentation plan, it is not implemented yet.
+
 ### Duplicate source file:
 
 ## 📋 **Overview**
