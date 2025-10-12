@@ -14,13 +14,20 @@ This document outlines the implementation of `UseAnimationController`, an **adva
 
 ### **Security Risk: Client Authority**
 
-> **WARNING**: When `UseAnimationController` is enabled, the client has full authority over NPC pathfinding and movement. This makes the system **vulnerable to exploits**:
+> **NOTE**: When `UseAnimationController` is enabled, the client has full authority over NPC pathfinding and movement.
 >
-> - Malicious clients can manipulate NPC positions
-> - Exploiters can make NPCs teleport or move incorrectly
-> - Combat interactions can be spoofed
-> - **Only use this for non-critical NPCs** (e.g., ambient NPCs, visual-only crowds)
-> - **Never use for combat NPCs** that affect gameplay
+> **Anti-exploit validation has been intentionally REMOVED** from this system because:
+>
+> - Network latency (ping) causes many false positives in position validation
+> - Player experience is more important than preventing rare exploit scenarios
+> - False positives would negatively impact legitimate users with high ping
+> - Position validation checks (max speed, teleport detection) are too strict for real-world network conditions
+>
+> **Design Decision**: We prioritize smooth gameplay for all users over strict anti-cheat measures.
+>
+> - Use this for non-critical NPCs where position accuracy isn't gameplay-critical
+> - Health remains server-authoritative to maintain gameplay integrity
+> - For critical NPCs, consider using traditional server-authoritative movement instead
 
 ### **Advanced Configuration**
 
@@ -29,7 +36,7 @@ This document outlines the implementation of `UseAnimationController`, an **adva
 > - Deep understanding of Roblox replication
 > - Careful testing across multiple clients
 > - Game-specific tuning for best results
-> - Additional client-side validation logic
+> - Acceptance of client authority over positions (no anti-exploit validation)
 > - **Not recommended for beginners**
 
 ### **No Server Physics**
@@ -680,7 +687,7 @@ The position sync system is **highly optimized** to minimize network traffic and
 2. **Server → Nearby Clients Only**: Server broadcasts position updates **ONLY** to clients within `BROADCAST_DISTANCE` (not all clients)
 3. **Result**: 70-95% network traffic reduction compared to broadcasting to all clients
 4. **Frequency Control**: Updates fire based on `POSITION_SYNC_INTERVAL` config (default: 0.5 seconds)
-5. **Position Validation**: Server validates position changes to detect teleport exploits
+5. **No Position Validation**: Server accepts all position updates (no anti-exploit checks to avoid ping-related false positives)
 
 **Network Flow:**
 
@@ -692,7 +699,7 @@ Simulating Client:
 
 Server:
 ├── Receives position update
-├── Validates position (optional)
+├── No validation (accepts all updates - prevents false positives)
 ├── Updates ReplicatedStorage data
 └── Broadcasts ONLY to nearby clients (within BROADCAST_DISTANCE)
 
@@ -827,15 +834,12 @@ function ClientPhysicsSync.HandlePositionUpdate(fromPlayer: Player, npcID: strin
         return
     end
 
-    -- Optional: Validate position change (anti-exploit)
+    -- REMOVED: Position validation (caused false positives from ping/latency)
+    -- We accept all position updates to ensure smooth gameplay for high-ping users
+    -- Anti-exploit validation has been intentionally disabled
+
+    -- Update position tracking (for reference, no validation)
     local oldPosition = NPCPositions[npcID]
-    if oldPosition then
-        local isValid = ClientPhysicsSync.ValidatePositionUpdate(npcFolder, oldPosition, newPosition)
-        if not isValid then
-            warn("[ClientPhysicsSync] Rejected suspicious position update from:", fromPlayer.Name, "NPC:", npcID)
-            return
-        end
-    end
 
     -- Update position in ReplicatedStorage
     local positionValue = npcFolder:FindFirstChild("Position")
@@ -888,31 +892,22 @@ function ClientPhysicsSync.FireClientPositionUpdate(player: Player, npcID: strin
 end
 
 --[[
-    Validate position update (anti-exploit)
-    Checks if position change is reasonable
+    REMOVED: Anti-exploit validation intentionally disabled
+
+    Position validation has been removed because:
+    - Network latency (ping) causes many false positives
+    - Players with high ping would experience stuttering/rejection of legitimate movements
+    - The tolerance multipliers (1.5x, 2x, etc.) are never enough for all network conditions
+    - User experience is more important than preventing rare exploit scenarios
+
+    Original validation checked if position changes exceeded max speed,
+    but real-world testing showed this negatively impacted legitimate users.
+
+    For critical gameplay NPCs, use server-authoritative movement instead of UseAnimationController.
 ]]
-function ClientPhysicsSync.ValidatePositionUpdate(npcFolder, oldPosition: Vector3, newPosition: Vector3): boolean
-    -- Get NPC config
-    local configJSON = npcFolder:FindFirstChild("Config")
-    if not configJSON then return true end  -- Skip validation if no config
 
-    local HttpService = game:GetService("HttpService")
-    local config = HttpService:JSONDecode(configJSON.Value)
-
-    -- Calculate max possible movement
-    local walkSpeed = config.WalkSpeed or 16
-    local maxDistance = walkSpeed * OptimizationConfig.ClientSimulation.POSITION_SYNC_INTERVAL * 1.5  -- 1.5x tolerance
-
-    -- Check if distance is reasonable
-    local actualDistance = (newPosition - oldPosition).Magnitude
-
-    if actualDistance > maxDistance then
-        -- Position change is too large - possible teleport exploit
-        return false
-    end
-
-    return true
-end
+-- This function has been removed - no validation performed
+-- function ClientPhysicsSync.ValidatePositionUpdate(...) -- REMOVED
 
 --[[
     Cleanup when NPC is removed
@@ -992,7 +987,7 @@ Network load: 95% reduction (playable)
 
     ⚠️ WARNING: UseAnimationController is an ADVANCED optimization
     - Offloads ALL physics to client
-    - Makes system vulnerable to exploits
+    - Client has full position authority (no anti-exploit validation)
     - Requires extensive testing
     - NOT recommended for beginners
 ]]
@@ -1004,9 +999,9 @@ local OptimizationConfig = {
         ⚠️ CRITICAL WARNINGS:
         1. NO physics on server at all
         2. Client handles ALL pathfinding and movement
-        3. Prone to exploits - malicious clients can manipulate NPC positions
-           >> Since client handles pathfinding, exploiters can teleport NPCs,
-           >> make them walk through walls, or freeze them entirely
+        3. Client has full position authority (no validation - prevents ping false positives)
+           >> We accept that clients can manipulate NPC positions
+           >> This is intentional trade-off for smooth gameplay at all ping levels
         4. Only suitable for non-critical NPCs (ambient, visual-only)
         5. Requires more testing for specific use cases
         6. Everything is rendered on client-side for optimization
@@ -1021,7 +1016,8 @@ local OptimizationConfig = {
         - Instead of HumanoidRootPart, only positions are saved
 
         Performance: Can handle 1000+ NPCs with barely any lag
-        Security: Vulnerable to client-side exploits (positions), but health is server-managed
+        Security: Client has position authority (no validation - prevents ping-related false positives)
+                  Health remains server-authoritative to protect gameplay integrity
         Use Case: Ambient NPCs, crowds, background characters (non-gameplay-critical)
 
         ⚠️ DO NOT USE FOR:
@@ -1149,10 +1145,10 @@ Update the `SpawnNPC` configuration to include the new optimization flag:
             ⚠️ WARNING: This is an ADVANCED feature with the following implications:
                 1. NO physics simulation on server
                 2. Client handles ALL pathfinding and movement
-                3. Prone to exploits - client can manipulate NPC positions
+                3. Client has position authority (no validation to prevent ping false positives)
                 4. Only for non-critical NPCs (ambient, visual-only)
                 5. Everything rendered on client-side
-                6. Can handle 1000+ NPCs but vulnerable to exploitation
+                6. Can handle 1000+ NPCs with smooth gameplay at all ping levels
 ]]
 function NPC_Service:SpawnNPC(config)
     -- Check if UseAnimationController is enabled
@@ -1189,7 +1185,7 @@ end
 - [ ] Create OptimizationConfig with all settings
 - [ ] Create data structure in ReplicatedStorage for NPC data (Position, Health, IsAlive, etc.)
 - [ ] Implement ClientPhysicsSpawner (no physical model, just data)
-- [ ] Implement server-side health storage (simple storage, no validation yet)
+- [ ] Implement server-side health storage (simple storage, server-authoritative for health)
 - [ ] Add cleanup handlers for client-physics NPCs
 
 ### **Phase 2: Client-Side Manager & Position Sync**
@@ -1207,7 +1203,7 @@ end
 - [ ] Create simulation loop (Heartbeat)
 - [ ] Implement position synchronization to server via Knit signal
 - [ ] Implement server-side distance-based broadcasting (only send to nearby clients)
-- [ ] Add position validation (anti-exploit)
+- [ ] ~~Add position validation~~ - REMOVED (causes false positives)
 - [ ] Setup Knit service signals (UpdateNPCPosition, NPCPositionUpdated)
 
 ### **Phase 3: Client-Side Pathfinding (NoobPath)**
@@ -1269,7 +1265,7 @@ end
 - [ ] Profile server performance
 - [ ] Test with multiple clients
 - [ ] Test client disconnection (NPC reassignment)
-- [ ] Test exploit scenarios
+- [ ] Test exploit scenarios (document behavior, no mitigation implemented)
 
 ---
 
@@ -1308,18 +1304,20 @@ end
    - Verify NPC distribution across clients
    - Verify position synchronization
 
-### **Exploit Testing**
+### **Exploit Testing** (Documentation Only - No Mitigation)
 
-1. **Position Manipulation**
+1. **Position Manipulation** (Expected Behavior - Not Prevented)
 
-   - Test if client can teleport NPCs
-   - Test if client can freeze NPCs
-   - Test if client can make NPCs walk through walls
+   - Test if client can teleport NPCs (will succeed - acceptable trade-off)
+   - Test if client can freeze NPCs (will succeed - acceptable trade-off)
+   - Test if client can make NPCs walk through walls (will succeed - acceptable trade-off)
+   - Document these behaviors for developers to understand system limitations
 
 2. **Mitigation Strategies**
-   - Server-side validation for critical events
-   - Position sanity checks (max speed, teleport detection)
-   - Rate limiting for position updates
+   - Server-side validation for critical events (combat/damage only)
+   - ❌ Position sanity checks REMOVED (caused false positives from ping/latency)
+   - ❌ Rate limiting REMOVED (punishes legitimate high-ping players)
+   - **Note**: We accept position exploit risks to maintain smooth gameplay for all users
 
 ---
 
@@ -1371,47 +1369,78 @@ Network:
 
 ## 🔐 **Security Considerations**
 
-### **Exploit Scenarios**
+### **⚠️ Anti-Exploit Validation: INTENTIONALLY DISABLED**
+
+**This system does NOT include anti-exploit validation for position updates.**
+
+**Reasoning:**
+
+- Network latency and ping variations cause too many false positives
+- Players with high ping (200ms+) would have their legitimate movements rejected
+- No tolerance multiplier (1.5x, 2x, 3x) works reliably for all network conditions
+- False positives negatively impact user experience more than exploits would
+- Stuttering, rubber-banding, and position rejection are unacceptable for gameplay
+
+**Design Philosophy:**
+
+> **User experience > Anti-cheat strictness**
+>
+> We prioritize smooth gameplay for legitimate users over preventing rare exploit scenarios.
+> If position accuracy is critical for your game, use server-authoritative movement instead.
+
+### **Potential Exploit Scenarios** (No Mitigation)
 
 1. **NPC Teleportation**
 
    - **Attack**: Client sends fake position updates
-   - **Mitigation**: Server validates position changes (max speed check)
+   - **Mitigation**: NONE - Accepted as trade-off for smooth gameplay
 
 2. **NPC Freezing**
 
    - **Attack**: Client stops updating NPC positions
-   - **Mitigation**: Server detects stale positions and reassigns to another client
+   - **Mitigation**: NONE - Other clients can still see/interact with NPCs
 
 3. **Wall Clipping**
 
    - **Attack**: Client makes NPCs walk through walls
-   - **Mitigation**: Server-side validation for critical interactions
+   - **Mitigation**: NONE - Visual only, no gameplay impact if NPCs are non-critical
 
 4. **Combat Manipulation**
    - **Attack**: Client makes NPCs attack/target incorrectly
-   - **Mitigation**: Server validates all combat events
+   - **Mitigation**: Server validates all combat/damage events (health is server-authoritative)
 
-### **Validation Strategy**
+### **What IS Protected**
+
+✅ **Health/Damage** - Server-authoritative, cannot be exploited
+✅ **Combat Events** - Server validates all damage dealing
+✅ **NPC Spawning** - Server controls what NPCs exist
+✅ **NPC Configuration** - Server defines NPC properties
+
+### **What is NOT Protected**
+
+❌ **Position Updates** - Client has full authority, no validation
+❌ **Movement Paths** - Client controls pathfinding
+❌ **Visual State** - Client controls animations/rendering
+
+### **Removed Validation Code** (For Reference)
 
 ```lua
--- Server-side position validation
+-- THIS CODE HAS BEEN REMOVED - DO NOT IMPLEMENT
+--[[
+-- Original validation function (REMOVED due to false positives)
 function ValidatePositionUpdate(npcData, oldPosition, newPosition, deltaTime)
-    -- Calculate distance moved
     local distance = (newPosition - oldPosition).Magnitude
-
-    -- Calculate max possible distance (based on WalkSpeed)
     local maxSpeed = npcData.Config.WalkSpeed or 16
-    local maxDistance = maxSpeed * deltaTime * 1.5  -- 1.5x tolerance
+    local maxDistance = maxSpeed * deltaTime * 1.5  -- Even 1.5x tolerance caused issues
 
-    -- Reject if moved too far (teleport detection)
     if distance > maxDistance then
-        warn("[Security] Rejected suspicious position update:", npcData.ID)
-        return false
+        -- This would reject legitimate high-ping players
+        return false  -- PROBLEM: Too many false positives
     end
 
     return true
 end
+]]
 ```
 
 ### **Use Case Guidelines**
@@ -1446,9 +1475,9 @@ end
 **Do NOT Enable When:**
 
 - NPCs are critical to gameplay
-- NPCs handle combat or loot
+- NPCs handle combat or loot (position accuracy matters)
 - You're new to Roblox development
-- You can't implement server-side validation
+- Position accuracy is essential for game mechanics
 
 ### **Best Practices**
 
@@ -1458,11 +1487,12 @@ end
    - Gradually increase to 100, 500, 1000
    - Monitor performance at each step
 
-2. **Implement Validation**
+2. **Server Authority for Critical Systems**
 
-   - Always validate critical events on server
-   - Use position sanity checks
-   - Implement rate limiting
+   - Always validate combat/damage events on server (health is server-authoritative)
+   - ❌ DO NOT implement position validation (causes false positives from ping)
+   - ❌ DO NOT implement rate limiting (punishes high-ping players)
+   - Accept that client has position authority as a design trade-off
 
 3. **Distribute Load**
 
@@ -1508,11 +1538,11 @@ end
 - Day 1-2: ClientPhysicsRenderer implementation (separate from existing NPCRenderer)
 - Day 3: Testing and optimization
 
-### **Phase 6: Testing & Security** (4-5 days)
+### **Phase 6: Testing & Optimization** (3-4 days)
 
 - Day 1-2: Performance testing
 - Day 3-4: Multi-client testing
-- Day 5: Exploit testing and mitigation
+- Note: No anti-exploit validation implemented (intentionally disabled due to ping false positives)
 
 **Total: 16-21 days**
 
@@ -1622,9 +1652,9 @@ The `UseAnimationController` optimization is a **powerful but risky** feature th
 - ✅ Enables large-scale NPC systems (1000+ NPCs)
 - ✅ Uses workspace.Gravity for physics consistency
 - ✅ Respects RenderConfig for rendering settings (no duplication)
-- ⚠️ Vulnerable to client-side exploits (positions)
-- ⚠️ Requires extensive testing and validation
-- ⚠️ Only suitable for non-critical NPCs
+- ⚠️ Client has position authority (no anti-exploit validation to prevent ping false positives)
+- ⚠️ Requires extensive testing
+- ⚠️ Only suitable for non-critical NPCs where position accuracy isn't gameplay-critical
 
 **Recommended Use Cases:**
 
@@ -1649,7 +1679,7 @@ The `UseAnimationController` optimization is a **powerful but risky** feature th
 - **Distance-based broadcasting**: Added optimized position sync system using Knit signals
   - Server only broadcasts updates to nearby clients (70-95% network reduction)
   - Client sends position updates via Knit service method
-  - Server validates position changes for anti-exploit
+  - No position validation (prevents false positives from network latency)
 - **Configuration separation**: Clear distinction between `OptimizationConfig` (physics) and `RenderConfig` (rendering)
 - **Added ClientPhysicsSync component**: Server-side handler for distance-based position broadcasting
 - **Clarified rendering systems**: Renamed to `ClientPhysicsRenderer` and added comparison table

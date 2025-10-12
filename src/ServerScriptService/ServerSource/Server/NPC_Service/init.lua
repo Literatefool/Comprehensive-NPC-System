@@ -48,6 +48,11 @@ NPC_Service.SetComponent = require(componentsFolder["Set()"])
 			* Scale: number? - Visual scale multiplier (default: 1.0)
 			* Faction: string? - NPC faction/team identifier (e.g., "Ally") >> same team NPCs won't target each other
 			* EnemyType: string? - Combat classification (e.g., "Ranged", "Melee")
+	
+	UNIMPLEMENTED OPTIMIZATION:
+		- UseAnimationController: boolean? - (UNIMPLEMENTED) Use AnimationController instead of Humanoid for heavy optimization
+			This configuration can significantly improve performance for large numbers of NPCs. (recommended for 100+ NPCs)
+			For implementation details, see: https://raw.githubusercontent.com/Froredion/Comprehensive-NPC-System/refs/heads/master/documentations/Unimplemented/UseAnimationController_Implementation_Plan.md
 		
 	@return Model - The spawned NPC model
 ]]
