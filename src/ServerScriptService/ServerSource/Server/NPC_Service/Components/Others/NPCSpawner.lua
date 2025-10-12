@@ -94,12 +94,11 @@ local function createMinimalNPC(config)
 	-- Set PrimaryPart
 	npcModel.PrimaryPart = hrp
 
-	-- Apply scale to HumanoidRootPart if specified in ClientRenderData
+	-- Apply scale if specified in CustomData
 	local scale = npcModel:GetScale()
-	if config.ClientRenderData and config.ClientRenderData.Scale then
-		local desiredScale = config.ClientRenderData.Scale
+	if config.CustomData and config.CustomData.Scale then
+		local desiredScale = config.CustomData.Scale
 		-- Only apply scale if it's different from current scale
-
 		-- Consider small floating point differences when comparing scale values
 		if math.abs(desiredScale - scale) > 0.01 then
 			npcModel:ScaleTo(desiredScale)
@@ -144,6 +143,12 @@ local function createMinimalNPC(config)
 		npcModel:SetAttribute("NPC_ClientRenderData", jsonData)
 	end
 
+	-- Set custom data (also sent to client for Scale and other attributes)
+	if config.CustomData then
+		local jsonData = HttpService:JSONEncode(config.CustomData)
+		npcModel:SetAttribute("NPC_CustomData", jsonData)
+	end
+
 	-- Store reference to original model for client rendering
 	npcModel:SetAttribute("NPC_ModelPath", config.ModelPath:GetFullName())
 
@@ -179,10 +184,10 @@ local function createFullNPC(config)
 	humanoid.WalkSpeed = config.WalkSpeed or 16
 	humanoid.JumpPower = config.JumpPower or 50
 
-	-- Apply scale if specified in ClientRenderData
+	-- Apply scale if specified in CustomData
 	local scale = npcModel:GetScale()
-	if config.ClientRenderData and config.ClientRenderData.Scale then
-		local desiredScale = config.ClientRenderData.Scale
+	if config.CustomData and config.CustomData.Scale then
+		local desiredScale = config.CustomData.Scale
 		-- Only apply scale if it's different from current scale
 		-- Only scale if the scale difference is significant (account for small floating-point variations)
 		if math.abs(desiredScale - scale) > 0.01 then

@@ -22,9 +22,11 @@ TemplateController.SetComponent = require(componentsFolder["Set()"])
 
 --- Knit Controllers
 
-function TemplateController:KnitStart() end
+function TemplateController:KnitStart() 
+	
+end
 
-function TemplateController:KnitInit()
+function TemplateController:KnitInit() 
 	componentsInitializer(script)
 end
 

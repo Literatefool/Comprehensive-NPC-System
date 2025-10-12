@@ -43,9 +43,9 @@ NPC_Service.SetComponent = require(componentsFolder["Set()"])
 		- UsePathfinding: boolean? - Use advanced pathfinding vs simple MoveTo() (default: true)
 		- EnableIdleWander: boolean? - Enable random wandering (default: true)
 		- EnableCombatMovement: boolean? - Enable combat movement (default: true)
-		- ClientRenderData: table? - Optional visual customization for client-side rendering (besides Scale, others are attributes)
-			* Scale: number? - Visual scale multiplier (default: 1.0)
+		- ClientRenderData: table? - Optional visual customization for client-side rendering
 		- CustomData: table? - Game-specific attributes for gameplay logic
+			* Scale: number? - Visual scale multiplier (default: 1.0)
 			* Faction: string? - NPC faction/team identifier (e.g., "Ally") >> same team NPCs won't target each other
 			* EnemyType: string? - Combat classification (e.g., "Ranged", "Melee")
 		

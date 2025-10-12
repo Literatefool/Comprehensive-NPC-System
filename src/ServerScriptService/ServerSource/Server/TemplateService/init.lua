@@ -1,8 +1,9 @@
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Knit = require(ReplicatedStorage.Packages.Knit)
-local TemplateService = Knit.CreateService({
+local TemplateService = Knit.CreateService {
 	Name = "TemplateService",
-})
+	
+}
 
 ---- Components
 --- component utilities
@@ -18,9 +19,13 @@ TemplateService.SetComponent = require(componentsFolder["Set()"])
 
 ---- Knit Services
 
-function TemplateService:KnitStart() end
+function TemplateService:KnitStart()
+	
+end
 
 function TemplateService:KnitInit()
+	
+	
 	---- Components Initializer
 	componentsInitializer(script)
 end

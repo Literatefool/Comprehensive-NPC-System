@@ -234,7 +234,7 @@ function NPCRenderer.CreateVisual(npc, modelPath, renderData)
 	-- Parse model path and get original model
 	local originalModel = game
 	for _, pathPart in pairs(string.split(modelPath, ".")) do
-		if pathPart == "game" then 
+		if pathPart == "game" then
 			continue
 		end
 		originalModel = originalModel:FindFirstChild(pathPart)
@@ -300,16 +300,22 @@ function NPCRenderer.CreateVisual(npc, modelPath, renderData)
 	-- Check and populate tools before scaling
 	NPCRenderer.CheckAndPopulateTools(npc)
 
-	-- Handle scaling (custom scale)
-	if renderData.Scale then
-		local currentScale = npc:GetScale()
-		-- Only apply scale if it's different from current scale
-		-- Only set scale if not already very close to desired value
+	-- Handle scaling from CustomData
+	local customDataJSON = npc:GetAttribute("NPC_CustomData")
+	if customDataJSON then
+		local success, customData = pcall(function()
+			return HttpService:JSONDecode(customDataJSON)
+		end)
 
-		if math.abs(renderData.Scale - currentScale) > 0.01 then
-			pcall(function()
-				npc:ScaleTo(renderData.Scale)
-			end)
+		if success and customData and customData.Scale then
+			local currentScale = npc:GetScale()
+			-- Only apply scale if it's different from current scale
+			-- Only set scale if not already very close to desired value
+			if math.abs(customData.Scale - currentScale) > 0.01 then
+				pcall(function()
+					npc:ScaleTo(customData.Scale)
+				end)
+			end
 		end
 	end
 
