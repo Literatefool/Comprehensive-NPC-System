@@ -234,7 +234,7 @@ function NPCRenderer.CreateVisual(npc, modelPath, renderData)
 	-- Parse model path and get original model
 	local originalModel = game
 	for _, pathPart in pairs(string.split(modelPath, ".")) do
-		if pathPart == "game" then
+		if pathPart == "game" then 
 			continue
 		end
 		originalModel = originalModel:FindFirstChild(pathPart)
@@ -300,12 +300,17 @@ function NPCRenderer.CreateVisual(npc, modelPath, renderData)
 	-- Check and populate tools before scaling
 	NPCRenderer.CheckAndPopulateTools(npc)
 
-	-- Handle scaling (boss or custom scale)
-	local scale = renderData.Scale or (npc:GetAttribute("IsBoss") and npc:GetAttribute("BossScale"))
-	if scale then
-		pcall(function()
-			npc:ScaleTo(scale)
-		end)
+	-- Handle scaling (custom scale)
+	if renderData.Scale then
+		local currentScale = npc:GetScale()
+		-- Only apply scale if it's different from current scale
+		-- Only set scale if not already very close to desired value
+
+		if math.abs(renderData.Scale - currentScale) > 0.01 then
+			pcall(function()
+				npc:ScaleTo(renderData.Scale)
+			end)
+		end
 	end
 
 	-- Store rendered data
@@ -383,15 +388,13 @@ function NPCRenderer.SetupLowerTorsoConnection(lowerTorso, serverRoot, originalM
 	-- Initial positioning
 	updateLowerTorsoPosition()
 
-	-- Connect to server HumanoidRootPart movement
+	-- Connect to server HumanoidRootPart movement for one-time sync
+	-- After initial positioning, Motor6D handles it naturally
 	local heartbeatConnection
 	heartbeatConnection = RunService.Heartbeat:Connect(function()
 		if lowerTorso.Parent and serverRoot.Parent then
 			updateLowerTorsoPosition()
-		else
-			if heartbeatConnection then
-				heartbeatConnection:Disconnect()
-			end
+			heartbeatConnection:Disconnect()
 		end
 	end)
 

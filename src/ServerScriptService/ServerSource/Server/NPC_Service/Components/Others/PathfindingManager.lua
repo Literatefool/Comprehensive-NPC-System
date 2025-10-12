@@ -35,7 +35,7 @@ function PathfindingManager.CreatePath(npc)
 	local path = NoobPath.Humanoid(npc, {
 		AgentRadius = 2,
 		AgentHeight = 5,
-		AgentCanJump = true,
+		AgentCanJump = false,
 		WaypointSpacing = 4,
 		Costs = {
 			Water = math.huge, -- Avoid water
@@ -50,6 +50,14 @@ function PathfindingManager.CreatePath(npc)
 	if SHOW_PATH_VISUALIZER then
 		path.Visualize = true
 	end
+
+	-- Setup automatic speed synchronization when WalkSpeed changes
+	-- This ensures NoobPath timeout calculations stay accurate
+	humanoid:GetPropertyChangedSignal("WalkSpeed"):Connect(function()
+		if path then
+			path.Speed = humanoid.WalkSpeed
+		end
+	end)
 
 	-- Setup error handling
 	path.Error:Connect(function(errorType)

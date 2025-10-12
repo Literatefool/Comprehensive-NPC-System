@@ -66,6 +66,8 @@ local function createMinimalNPC(config)
 		return nil
 	end
 
+	npcModel:ScaleTo(originalModel:GetScale())
+
 	local hrp = originalHRP:Clone()
 	hrp.Parent = npcModel
 
@@ -81,17 +83,49 @@ local function createMinimalNPC(config)
 	humanoid.Health = humanoid.MaxHealth
 	humanoid.WalkSpeed = config.WalkSpeed or 16
 	humanoid.JumpPower = config.JumpPower or 50
-	humanoid.HipHeight = originalHumanoid.HipHeight -- Preserve original HipHeight
+
+	-- Store original HipHeight before parenting
+	local originalHipHeight = originalHumanoid.HipHeight
+	-- Get the original model's scale to normalize the HipHeight
+	local originalModelScale = originalModel:GetScale()
+
 	humanoid.Parent = npcModel
 
 	-- Set PrimaryPart
 	npcModel.PrimaryPart = hrp
 
+	-- Apply scale to HumanoidRootPart if specified in ClientRenderData
+	local scale = npcModel:GetScale()
+	if config.ClientRenderData and config.ClientRenderData.Scale then
+		local desiredScale = config.ClientRenderData.Scale
+		-- Only apply scale if it's different from current scale
+
+		-- Consider small floating point differences when comparing scale values
+		if math.abs(desiredScale - scale) > 0.01 then
+			npcModel:ScaleTo(desiredScale)
+			scale = desiredScale
+		end
+	end
+
+	-- Set HipHeight AFTER parenting (Roblox resets it to 0 when parenting to minimal models)
+	-- Normalize the original HipHeight by dividing by original scale, then multiply by new scale
+	-- This accounts for cases where the original model was already scaled
+	humanoid.HipHeight = (originalHipHeight / originalModelScale) * scale
+
+	-- Enforce HipHeight stays correct (prevent Roblox from resetting it)
+	local scaledHipHeight = (originalHipHeight / originalModelScale) * scale
+	humanoid:GetPropertyChangedSignal("HipHeight"):Connect(function()
+		if humanoid.HipHeight ~= scaledHipHeight then
+			humanoid.HipHeight = scaledHipHeight
+		end
+	end)
+
 	-- Find ground position
 	local groundPos = findGroundPosition(config.Position)
 
-	-- Adjust for HipHeight and HumanoidRootPart size (use original humanoid's HipHeight)
-	local hipHeight = originalHumanoid.HipHeight
+	-- Adjust for HipHeight and HumanoidRootPart size (use scaled values)
+	-- Use the correctly scaled HipHeight that accounts for the original model's scale
+	local hipHeight = (originalHumanoid.HipHeight / originalModelScale) * scale
 	local hrpSize = hrp.Size
 	local finalY = groundPos.Y + (hrpSize.Y / 2) + hipHeight
 
@@ -145,10 +179,23 @@ local function createFullNPC(config)
 	humanoid.WalkSpeed = config.WalkSpeed or 16
 	humanoid.JumpPower = config.JumpPower or 50
 
+	-- Apply scale if specified in ClientRenderData
+	local scale = npcModel:GetScale()
+	if config.ClientRenderData and config.ClientRenderData.Scale then
+		local desiredScale = config.ClientRenderData.Scale
+		-- Only apply scale if it's different from current scale
+		-- Only scale if the scale difference is significant (account for small floating-point variations)
+		if math.abs(desiredScale - scale) > 0.01 then
+			npcModel:ScaleTo(desiredScale)
+			scale = desiredScale
+		end
+	end
+
 	-- Find ground position
 	local groundPos = findGroundPosition(config.Position)
 
-	-- Adjust for HipHeight and HumanoidRootPart size
+	-- Adjust for HipHeight and HumanoidRootPart size (scaled)
+	-- After ScaleTo, the HipHeight is already at the correctly scaled value
 	local hipHeight = humanoid.HipHeight
 	local hrpSize = hrp.Size
 	local finalY = groundPos.Y + (hrpSize.Y / 2) + hipHeight
@@ -337,8 +384,6 @@ function NPCSpawner:SpawnNPC(config)
 			NPC_Service.Components.SightDetector:SetupSightDetector(npcData)
 		end
 	end)
-
-	print("[NPCSpawner] Spawned NPC:", npcModel.Name, "at", npcModel.PrimaryPart.Position)
 
 	return npcModel
 end
