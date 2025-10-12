@@ -17,13 +17,13 @@ function Get:GetRenderedNPCs()
 	if not NPCRenderer then
 		return {}
 	end
-	
+
 	-- Access RenderedNPCs from NPCRenderer (via require)
-	local RenderConfig = require(ReplicatedStorage.SharedSource.Datas.RenderConfig)
+	local RenderConfig = require(ReplicatedStorage.SharedSource.Datas.NPCs.RenderConfig)
 	if not RenderConfig.ENABLED then
 		return {}
 	end
-	
+
 	-- Note: This requires NPCRenderer to expose its RenderedNPCs table
 	-- For now, return empty table as RenderedNPCs is local to NPCRenderer
 	return {}

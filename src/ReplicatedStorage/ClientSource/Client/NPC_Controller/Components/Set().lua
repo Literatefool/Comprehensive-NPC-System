@@ -52,7 +52,7 @@ end
 
 function Set.Init()
 	NPCRenderer = require(script.Parent.Others.NPCRenderer)
-	RenderConfig = require(ReplicatedStorage.SharedSource.Datas.RenderConfig)
+	RenderConfig = require(ReplicatedStorage.SharedSource.Datas.NPCs.RenderConfig)
 end
 
 return Set

@@ -14,7 +14,7 @@ local HttpService = game:GetService("HttpService")
 
 local NPCRenderer = {}
 
-local RenderConfig = require(ReplicatedStorage.SharedSource.Datas.RenderConfig)
+local RenderConfig = require(ReplicatedStorage.SharedSource.Datas.NPCs.RenderConfig)
 local NPCAnimator = require(script.Parent.NPCAnimator)
 
 -- Constants

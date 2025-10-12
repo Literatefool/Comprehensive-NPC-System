@@ -8,7 +8,7 @@ local NPCSpawner = {}
 local NPC_Service
 
 ---- Client Configuration
-local RenderConfig = require(ReplicatedStorage.SharedSource.Datas.RenderConfig)
+local RenderConfig = require(ReplicatedStorage.SharedSource.Datas.NPCs.RenderConfig)
 
 ---- Configuration
 local CLEANUP_DELAY = 5
