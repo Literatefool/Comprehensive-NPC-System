@@ -493,14 +493,22 @@ The following test scripts demonstrate various use cases and can be **safely del
 
 ### Disabling Visualizers
 
-Sight visualizers (cones and spheres) are useful for debugging but may impact performance in production.
+Sight visualizers (cones and spheres) and pathfinding visualizers (path lines) are useful for debugging but may impact performance in production.
 
-**To disable visualizers:**
+**To disable sight visualizers:**
 
 1. Open `src/ServerScriptService/ServerSource/Server/NPC_Service/Components/Others/SightVisualizer.lua`
 2. Change line 8:
    ```lua
    local VISUALIZER_ENABLED = false  -- Set to false to disable
+   ```
+
+**To disable pathfinding visualizers:**
+
+1. Open `src/ServerScriptService/ServerSource/Server/NPC_Service/Components/Others/PathfindingManager.lua`
+2. Change line 13:
+   ```lua
+   local SHOW_PATH_VISUALIZER = false  -- Set to false to disable path visualization
    ```
 
 **Note:** Visualizers themselves may not be 100% accurate and are intended for debugging purposes.
