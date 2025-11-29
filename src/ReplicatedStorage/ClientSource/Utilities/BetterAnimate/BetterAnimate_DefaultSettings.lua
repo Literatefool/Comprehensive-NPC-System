@@ -64,11 +64,15 @@ local Module = {
 
 			[Enum.HumanoidStateType.Running.Name] = function(self: Types.BetterAnimate)
 				local AssemblyLinearVelocityMagnitude = (self._AssemblyLinearVelocity * Vector3.new(1, 0, 1)).Magnitude
-				local Speed = AssemblyLinearVelocityMagnitude * (self._MoveDirection or Vector3.zero).Magnitude
+				local MoveDir = self._MoveDirection or Vector3.zero
+				local Speed = AssemblyLinearVelocityMagnitude * MoveDir.Magnitude
 				local SpeedRange = self._Class.SpeedRange
-				--print(Utils.MaxDecimal(AssemblyLinearVelocityMagnitude, 1), Speed)
+
+				-- Debug output (uncomment to debug animation issues)
+				-- print(string.format("[BetterAnimate Running] VelMag=%.1f, MoveDirMag=%.2f, Speed=%.1f, Range=[%.1f,%.1f]",
+				-- 	AssemblyLinearVelocityMagnitude, MoveDir.Magnitude, Speed, SpeedRange.Min, SpeedRange.Max))
+
 				self._Speed = Speed
-				--print(SpeedRange.Min, Speed)
 				if Speed > -math.huge and SpeedRange.Min >= Speed then
 					self:PlayClassAnimation(`Idle`, 0.2)
 				elseif Speed > SpeedRange.Min and SpeedRange.Max >= Speed then
