@@ -7,9 +7,9 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Knit = require(ReplicatedStorage.Packages.Knit)
 Knit.OnStart():await()
 
-if true then
-	return
-end
+-- if true then
+-- 	return
+-- end
 
 local NPC_Service = Knit.GetService("NPC_Service")
 
@@ -96,13 +96,12 @@ local function spawnWaveEnemy()
 	local enemyId = enemyCounter
 
 	-- Spawn at first waypoint
-	local spawnPosition = walkpoints[1].Position
 	local randomAngle = math.random(0, 360)
 	local rotation = CFrame.Angles(0, 0, 0)
 
 	local enemy = NPC_Service:SpawnNPC({
 		Name = "TowerDefense_Enemy_" .. enemyId,
-		Position = spawnPosition,
+		SpawnerPart = walkpoints[1], -- Use SpawnerPart to auto-disable CanCollide/CanQuery/CanTouch
 		Rotation = rotation,
 		ModelPath = enemyRig,
 

@@ -41,16 +41,21 @@ end
 local Workspace = game:GetService("Workspace")
 local spawnPositions = {}
 
--- Collect spawner positions
+-- Collect spawner positions and parts
 local spawners = Workspace:FindFirstChild("Spawners")
 if spawners then
 	for _, categoryFolder in pairs(spawners:GetChildren()) do
 		if categoryFolder:IsA("Folder") then
 			for _, spawner in pairs(categoryFolder:GetChildren()) do
-				if spawner:IsA("BasePart") or (spawner:IsA("Model") and spawner.PrimaryPart) then
-					local position = spawner:IsA("BasePart") and spawner.Position or spawner.PrimaryPart.Position
+				if spawner:IsA("BasePart") then
 					table.insert(spawnPositions, {
-						Position = position,
+						SpawnerPart = spawner, -- Store the part for SpawnerPart config
+						Category = categoryFolder.Name,
+						Name = spawner.Name,
+					})
+				elseif spawner:IsA("Model") and spawner.PrimaryPart then
+					table.insert(spawnPositions, {
+						SpawnerPart = spawner.PrimaryPart, -- Store PrimaryPart for SpawnerPart config
 						Category = categoryFolder.Name,
 						Name = spawner.Name,
 					})
@@ -64,27 +69,18 @@ end
 print("\n📌 Test 1: Spawning test NPCs...")
 task.wait(1)
 
--- Find ClientRender spawner position
+-- Find ClientRender spawner
 local clientRenderSpawner = Workspace:FindFirstChild("Spawners")
 	and Workspace.Spawners:FindFirstChild("ClientRender")
 	and Workspace.Spawners.ClientRender:FindFirstChild("NPCSpawner_2")
-
-local spawnPos1 = TEST_SPAWN_POSITION
-if clientRenderSpawner then
-	if clientRenderSpawner:IsA("BasePart") then
-		spawnPos1 = clientRenderSpawner.Position
-	elseif clientRenderSpawner:IsA("Model") and clientRenderSpawner.PrimaryPart then
-		spawnPos1 = clientRenderSpawner.PrimaryPart.Position
-	end
-end
 
 -- Random rotation for first NPC
 local randomAngle1 = math.random(0, 360)
 local rotation1 = CFrame.Angles(0, math.rad(randomAngle1), 0)
 
-local testNPC1 = NPC_Service:SpawnNPC({
+-- Build spawn config with SpawnerPart if available
+local spawnConfig1 = {
 	Name = "TestRenderedNPC_1",
-	Position = spawnPos1,
 	Rotation = rotation1,
 	ModelPath = rigModel,
 
@@ -123,7 +119,18 @@ local testNPC1 = NPC_Service:SpawnNPC({
 		-- Level/difficulty
 		Level = 1,
 	},
-})
+}
+
+-- Use SpawnerPart if available (auto-disables CanCollide/CanQuery/CanTouch)
+if clientRenderSpawner and clientRenderSpawner:IsA("BasePart") then
+	spawnConfig1.SpawnerPart = clientRenderSpawner
+elseif clientRenderSpawner and clientRenderSpawner:IsA("Model") and clientRenderSpawner.PrimaryPart then
+	spawnConfig1.SpawnerPart = clientRenderSpawner.PrimaryPart
+else
+	spawnConfig1.Position = TEST_SPAWN_POSITION
+end
+
+local testNPC1 = NPC_Service:SpawnNPC(spawnConfig1)
 
 if not testNPC1 then
 	warn("❌ Failed to spawn Test NPC 1")
@@ -191,7 +198,7 @@ for i = 1, #spawnPositions do
 
 	local npc = NPC_Service:SpawnNPC({
 		Name = npcName,
-		Position = spawnInfo.Position,
+		SpawnerPart = spawnInfo.SpawnerPart, -- Use SpawnerPart to auto-disable CanCollide/CanQuery/CanTouch
 		Rotation = rotation,
 		ModelPath = rigModel,
 

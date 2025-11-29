@@ -257,18 +257,28 @@ function ClientPhysicsSpawner:SpawnNPC(config)
 	if not config.Name then
 		error("[ClientPhysicsSpawner] Name is required")
 	end
-	if not config.Position then
-		error("[ClientPhysicsSpawner] Position is required")
+	if not config.Position and not config.SpawnerPart then
+		error("[ClientPhysicsSpawner] Position or SpawnerPart is required")
 	end
 	if not config.ModelPath or not config.ModelPath:IsA("Model") then
 		error("[ClientPhysicsSpawner] ModelPath must be a Model instance")
+	end
+
+	-- Handle SpawnerPart: extract position and disable collision properties
+	local spawnPosition = config.Position
+	if config.SpawnerPart and config.SpawnerPart:IsA("BasePart") then
+		spawnPosition = config.SpawnerPart.Position
+		-- Disable collision properties to prevent raycast interference
+		config.SpawnerPart.CanCollide = false
+		config.SpawnerPart.CanQuery = false
+		config.SpawnerPart.CanTouch = false
 	end
 
 	-- Generate unique ID
 	local npcID = HttpService:GenerateGUID(false)
 
 	-- Find ground position
-	local groundPos = findGroundPosition(config.Position)
+	local groundPos = findGroundPosition(spawnPosition)
 
 	-- Calculate proper height offset from model
 	local heightOffset = getHeightOffsetFromModel(config.ModelPath)

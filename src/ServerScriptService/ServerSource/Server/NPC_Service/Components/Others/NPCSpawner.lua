@@ -325,11 +325,20 @@ function NPCSpawner:SpawnNPC(config)
 	if not config.Name then
 		error("[NPCSpawner] Name is required")
 	end
-	if not config.Position then
-		error("[NPCSpawner] Position is required")
+	if not config.Position and not config.SpawnerPart then
+		error("[NPCSpawner] Position or SpawnerPart is required")
 	end
 	if not config.ModelPath or not config.ModelPath:IsA("Model") then
 		error("[NPCSpawner] ModelPath must be a Model instance")
+	end
+
+	-- Handle SpawnerPart: extract position and disable collision properties
+	if config.SpawnerPart and config.SpawnerPart:IsA("BasePart") then
+		config.Position = config.SpawnerPart.Position
+		-- Disable collision properties to prevent raycast interference
+		config.SpawnerPart.CanCollide = false
+		config.SpawnerPart.CanQuery = false
+		config.SpawnerPart.CanTouch = false
 	end
 
 	-- Create NPC based on RenderConfig

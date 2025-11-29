@@ -94,14 +94,15 @@ function ClientNPCManager.OnNPCAdded(npcFolder)
 	-- Wait a moment for all values to replicate
 	task.wait(0.1)
 
-	-- Check if we should simulate this NPC
-	if ClientNPCManager.ShouldSimulateNPC(npcFolder) then
-		ClientNPCManager.StartSimulation(npcFolder)
-	end
-
-	-- Notify renderer about new NPC (it will decide whether to render based on distance)
+	-- Notify renderer FIRST so visual model exists before simulation starts
+	-- This ensures height offset can be calculated from actual model
 	if ClientPhysicsRenderer then
 		ClientPhysicsRenderer.OnNPCAdded(npcID)
+	end
+
+	-- Check if we should simulate this NPC (after renderer has created visual model)
+	if ClientNPCManager.ShouldSimulateNPC(npcFolder) then
+		ClientNPCManager.StartSimulation(npcFolder)
 	end
 end
 
@@ -302,6 +303,12 @@ function ClientNPCManager.SimulationStep(deltaTime)
 		local positionValue = npcData.Folder:FindFirstChild("Position")
 		if positionValue then
 			positionValue.Value = npcData.Position
+		end
+
+		-- Update orientation in folder for renderer to read (every frame for smooth turning)
+		local orientationValue = npcData.Folder:FindFirstChild("Orientation")
+		if orientationValue and npcData.Orientation then
+			orientationValue.Value = npcData.Orientation
 		end
 	end
 end

@@ -56,6 +56,38 @@ local function getHeightOffsetFromVisualModel(visualModel)
 end
 
 --[[
+	Find ground position and snap to correct height
+
+	@param position Vector3 - Current position (may be inaccurate)
+	@param heightOffset number - Height offset from ground (HipHeight + RootPartHalfHeight)
+	@return Vector3 - Corrected position at proper ground height
+]]
+function ClientPhysicsRenderer.SnapToGround(position, heightOffset)
+	local raycastParams = RaycastParams.new()
+	raycastParams.FilterType = Enum.RaycastFilterType.Exclude
+	-- Exclude Characters folder and any NPCs folder to avoid hitting other NPCs
+	local excludeList = {}
+	local charactersFolder = workspace:FindFirstChild("Characters")
+	if charactersFolder then
+		table.insert(excludeList, charactersFolder)
+	end
+	raycastParams.FilterDescendantsInstances = excludeList
+
+	-- Cast from above the position to find actual ground
+	-- Start higher to ensure we're above any spawn point objects
+	local startPos = Vector3.new(position.X, position.Y + 20, position.Z)
+	local rayResult = workspace:Raycast(startPos, Vector3.new(0, -100, 0), raycastParams)
+
+	if rayResult then
+		-- Found ground - position at ground + height offset
+		return Vector3.new(position.X, rayResult.Position.Y + heightOffset, position.Z)
+	end
+
+	-- No ground found, return original position
+	return position
+end
+
+--[[
 	Initialize the renderer
 ]]
 function ClientPhysicsRenderer.Initialize()
@@ -170,6 +202,20 @@ function ClientPhysicsRenderer.RenderNPC(npcID)
 	local visualModel = originalModel:Clone()
 	visualModel.Name = npcID .. "_Visual"
 
+	-- IMPORTANT: Disable Humanoid physics BEFORE parenting to workspace
+	-- This prevents the Humanoid from "standing up" or applying physics on first frame
+	local humanoid = visualModel:FindFirstChildOfClass("Humanoid")
+	if humanoid then
+		humanoid.PlatformStand = true
+	end
+
+	-- Anchor HumanoidRootPart to completely eliminate physics calculations
+	-- We control position manually via CFrame in RenderStepped
+	local rootPart = visualModel:FindFirstChild("HumanoidRootPart")
+	if rootPart then
+		rootPart.Anchored = true
+	end
+
 	-- Make all parts non-collidable (client-side visuals only)
 	for _, descendant in pairs(visualModel:GetDescendants()) do
 		if descendant:IsA("BasePart") then
@@ -179,10 +225,12 @@ function ClientPhysicsRenderer.RenderNPC(npcID)
 		end
 	end
 
-	-- Apply scale if specified
-	if config.CustomData and config.CustomData.Scale then
+	-- Apply scale if specified (check both CustomData and ClientRenderData)
+	local scale = (config.CustomData and config.CustomData.Scale)
+		or (config.ClientRenderData and config.ClientRenderData.Scale)
+	if scale then
 		pcall(function()
-			visualModel:ScaleTo(config.CustomData.Scale)
+			visualModel:ScaleTo(scale)
 		end)
 	end
 
@@ -190,10 +238,26 @@ function ClientPhysicsRenderer.RenderNPC(npcID)
 	local positionValue = npcFolder:FindFirstChild("Position")
 	local position = positionValue and positionValue.Value or Vector3.new(0, 0, 0)
 
+	-- Get initial orientation
+	local orientationValue = npcFolder:FindFirstChild("Orientation")
+	local orientation = orientationValue and orientationValue.Value or CFrame.new()
+
+	-- Calculate proper height offset from the ACTUAL visual model (after scaling)
+	-- This ensures correct positioning regardless of server's calculation
+	local heightOffset = getHeightOffsetFromVisualModel(visualModel)
+
+	-- Find actual ground position and apply correct height offset
+	local correctedPosition = ClientPhysicsRenderer.SnapToGround(position, heightOffset)
+
+	-- Update the position value so simulation uses correct position
+	if positionValue then
+		positionValue.Value = correctedPosition
+	end
+
 	-- Set initial position using HumanoidRootPart.CFrame for accuracy
-	local rootPart = visualModel:FindFirstChild("HumanoidRootPart")
 	if rootPart then
-		rootPart.CFrame = CFrame.new(position)
+		-- Combine corrected position with orientation rotation
+		rootPart.CFrame = CFrame.new(correctedPosition) * orientation.Rotation
 	end
 
 	-- Ensure Characters/NPCs folder exists
@@ -217,32 +281,20 @@ function ClientPhysicsRenderer.RenderNPC(npcID)
 	-- Track connections
 	local connections = {}
 
-	-- Setup position sync using HumanoidRootPart.CFrame for accuracy
-	if positionValue then
-		local positionConnection = positionValue.Changed:Connect(function(newPosition)
-			if visualModel and visualModel.Parent then
-				local hrp = visualModel:FindFirstChild("HumanoidRootPart")
-				if hrp then
-					local currentRotation = hrp.CFrame - hrp.CFrame.Position
-					hrp.CFrame = CFrame.new(newPosition) * currentRotation
-				end
-			end
-		end)
-		table.insert(connections, positionConnection)
-	end
-
-	-- Setup orientation sync using HumanoidRootPart.CFrame for accuracy
+	-- Continuous CFrame sync via RenderStepped (ensures position stays locked even during idle)
+	-- RenderStepped runs before rendering, ideal for visual updates
 	local orientationValue = npcFolder:FindFirstChild("Orientation")
-	if orientationValue then
-		local orientationConnection = orientationValue.Changed:Connect(function(newOrientation)
-			if visualModel and visualModel.Parent then
-				local hrp = visualModel:FindFirstChild("HumanoidRootPart")
-				if hrp then
-					hrp.CFrame = CFrame.new(hrp.Position) * newOrientation.Rotation
-				end
+	local hrp = visualModel:FindFirstChild("HumanoidRootPart")
+
+	if hrp and positionValue then
+		local renderSteppedConnection = RunService.RenderStepped:Connect(function()
+			if visualModel and visualModel.Parent and hrp and hrp.Parent then
+				local targetPosition = positionValue.Value
+				local targetRotation = orientationValue and orientationValue.Value.Rotation or CFrame.identity
+				hrp.CFrame = CFrame.new(targetPosition) * targetRotation
 			end
 		end)
-		table.insert(connections, orientationConnection)
+		table.insert(connections, renderSteppedConnection)
 	end
 
 	-- Setup health bar
@@ -252,8 +304,8 @@ function ClientPhysicsRenderer.RenderNPC(npcID)
 		ClientPhysicsRenderer.SetupHealthBar(visualModel, healthValue, maxHealthValue, connections)
 	end
 
-	-- Setup animator
-	local humanoid = visualModel:FindFirstChild("Humanoid")
+	-- Setup animator (PlatformStand already set earlier before parenting)
+	local humanoid = visualModel:FindFirstChildOfClass("Humanoid")
 	if humanoid then
 		local animator = humanoid:FindFirstChildOfClass("Animator")
 		if not animator then

@@ -162,6 +162,9 @@ function ClientNPCSimulator.SimulateMovement(npcData, deltaTime)
 	local walkSpeed = npcData.Config.WalkSpeed or 16
 	local movement = direction * walkSpeed * deltaTime
 
+	-- Update orientation FIRST (before movement) to face movement direction
+	npcData.Orientation = CFrame.lookAt(currentPos, currentPos + direction)
+
 	-- Apply movement
 	local newPosition = currentPos + movement
 
@@ -170,9 +173,6 @@ function ClientNPCSimulator.SimulateMovement(npcData, deltaTime)
 
 	npcData.Position = newPosition
 	npcData.MovementState = "Moving"
-
-	-- Update orientation to face movement direction
-	npcData.Orientation = CFrame.lookAt(newPosition, newPosition + direction)
 end
 
 --[[
@@ -221,14 +221,14 @@ function ClientNPCSimulator.SimulateCombatMovement(npcData, deltaTime)
 	local walkSpeed = npcData.Config.WalkSpeed or 16
 	local movement = direction * walkSpeed * deltaTime
 
+	-- Update orientation FIRST (before movement) to face movement direction
+	npcData.Orientation = CFrame.lookAt(currentPos, currentPos + direction)
+
 	local newPosition = currentPos + movement
 	newPosition = ClientNPCSimulator.SnapToGroundForNPC(npcData, newPosition)
 
 	npcData.Position = newPosition
 	npcData.MovementState = "CombatMoving"
-
-	-- Face movement direction
-	npcData.Orientation = CFrame.lookAt(newPosition, newPosition + direction)
 end
 
 --[[

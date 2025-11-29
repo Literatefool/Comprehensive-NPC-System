@@ -1177,10 +1177,31 @@ return {
 
 		local CharacterTrove = Trove:Extend()
 
+		-- Determine what to use for loading animations
+		-- Priority: AnimationController > Animator (under Humanoid) > Humanoid (deprecated)
+		-- Using the Animator object directly instead of Humanoid fixes issues with PlatformStand = true
+		-- where the deprecated Humanoid:LoadAnimation() doesn't work properly
+		local AnimatorObject
+		if AnimationController then
+			-- Use AnimationController if available
+			AnimatorObject = AnimationController:FindFirstChildOfClass("Animator")
+			if not AnimatorObject then
+				AnimatorObject = Instance.new("Animator")
+				AnimatorObject.Parent = AnimationController
+			end
+		elseif Humanoid then
+			-- Use the Animator under Humanoid (modern API, works with PlatformStand = true)
+			AnimatorObject = Humanoid:FindFirstChildOfClass("Animator")
+			if not AnimatorObject then
+				AnimatorObject = Instance.new("Animator")
+				AnimatorObject.Parent = Humanoid
+			end
+		end
+
 		local preself = {} :: BetterAnimate
 		preself.Trove = CharacterTrove:Extend()
 		preself._PrimaryPart = PrimaryPart
-		preself._Animator = AnimationController or Humanoid
+		preself._Animator = AnimatorObject
 		preself._RigType = (Humanoid and Humanoid.RigType.Name) or `Custom`
 
 		local MarkerReached = CharacterTrove:Add(Unlim_Bindable.New())
