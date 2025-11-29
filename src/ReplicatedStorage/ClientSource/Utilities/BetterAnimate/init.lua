@@ -250,6 +250,12 @@ do
 			SetAnimationOnIdDifference: boolean?,
 			AssemblyLinearVelocity: Vector3?, -- Moving speed
 			AlwaysUseCurrentTransition: boolean?,
+
+			-- UseAnimationController support (client-physics NPCs with no AssemblyLinearVelocity)
+			-- When set, velocity is calculated from position changes instead of AssemblyLinearVelocity
+			UsePositionBasedVelocity: boolean?,
+			PositionProvider: (() -> Vector3)?, -- Function that returns current position (e.g., from npcData.Position)
+			OrientationProvider: (() -> CFrame)?, -- Function that returns current orientation (e.g., from npcData.Orientation)
 		}
 
 		BetterAnimate._Speed = nil :: number
@@ -258,6 +264,10 @@ do
 		BetterAnimate._PrimaryPart = nil :: BasePart
 		BetterAnimate._Animator = nil :: AnimationController | Humanoid
 		BetterAnimate._RigType = nil :: "R6" | "R15" | "Custom" --Enum.HumanoidRigType
+
+		-- Position-based velocity tracking (for UseAnimationController NPCs)
+		BetterAnimate._LastPosition = nil :: Vector3?
+		BetterAnimate._CalculatedVelocity = nil :: Vector3?
 
 		BetterAnimate._Time = nil :: {
 			Debug: number,
@@ -332,11 +342,26 @@ do
 					return self.FastConfig.MoveDirection
 				end
 
+				-- Get velocity - use calculated velocity for position-based mode, otherwise use physics
+				local velocity
+				if self.FastConfig.UsePositionBasedVelocity and self._CalculatedVelocity then
+					velocity = self._CalculatedVelocity
+				else
+					velocity = PrimaryPart.AssemblyLinearVelocity
+				end
+
+				-- Get orientation - use OrientationProvider for position-based mode to stay in sync
+				local orientation
+				if self.FastConfig.UsePositionBasedVelocity and self.FastConfig.OrientationProvider then
+					orientation = self.FastConfig.OrientationProvider()
+				else
+					orientation = PrimaryPart.CFrame
+				end
+
 				-- Calculate move direction from velocity (works for both players and NPCs)
 				-- This is more reliable than Humanoid.MoveDirection for NPCs on the client
-				local velocity = PrimaryPart.AssemblyLinearVelocity
 				local directionAdjust = self._Class.DirectionAdjust[self._Class.Current] or CFrame.identity
-				local MoveDirection = (PrimaryPart.CFrame * directionAdjust):VectorToObjectSpace(velocity)
+				local MoveDirection = (orientation * directionAdjust):VectorToObjectSpace(velocity)
 
 				return Utils.IsNaN(MoveDirection.Unit) and Vector3.zero or MoveDirection.Unit
 			end
@@ -914,10 +939,36 @@ do
 				StateNew = StateForced or StateNew
 
 				do -- Speed of character
-					local AssemblyLinearVelocity = self.FastConfig.AssemblyLinearVelocity
-						or self._PrimaryPart.AssemblyLinearVelocity
+					local AssemblyLinearVelocity
+
+					-- UseAnimationController mode: calculate velocity from position changes
+					if self.FastConfig.UsePositionBasedVelocity then
+						local currentPosition
+						if self.FastConfig.PositionProvider then
+							currentPosition = self.FastConfig.PositionProvider()
+						else
+							currentPosition = self._PrimaryPart.Position
+						end
+
+						if self._LastPosition and Dt > 0 then
+							AssemblyLinearVelocity = (currentPosition - self._LastPosition) / Dt
+						else
+							AssemblyLinearVelocity = Vector3.zero
+						end
+
+						self._LastPosition = currentPosition
+						self._CalculatedVelocity = AssemblyLinearVelocity
+					else
+						AssemblyLinearVelocity = self.FastConfig.AssemblyLinearVelocity
+							or self._PrimaryPart.AssemblyLinearVelocity
+					end
+
 					self._AssemblyLinearVelocity = AssemblyLinearVelocity
 					self._Speed = Utils.MaxDecimal(AssemblyLinearVelocity.Magnitude, 1)
+				end
+
+				do -- Update MoveDirection before state functions (they need it for speed calculations)
+					self._MoveDirection = self:GetMoveDirection()
 				end
 
 				do -- New state event

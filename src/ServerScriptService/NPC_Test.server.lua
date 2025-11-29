@@ -207,7 +207,7 @@ for i = 1, #spawnPositions do
 		EnableCombatMovement = true,
 
 		ClientRenderData = {
-			Scale = 1.0 + (i * 0.1), -- Vary scale for visual difference
+			Scale = 1, -- 1.0 + (i * 0.1), -- Vary scale for visual difference
 			CustomColor = Color3.fromRGB(100 + i * 30, 150, 255 - i * 30),
 			Transparency = 0,
 		},

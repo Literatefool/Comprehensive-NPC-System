@@ -1,9 +1,9 @@
 --[[
 	NPCAnimator - BetterAnimate integration for NPC animations
-	
+
 	Purpose: Handles client-side NPC animations using BetterAnimate library
 	Works independently of NPCRenderer - animates server NPCs or visual models
-	
+
 	Features:
 	- Full BetterAnimate integration with proper timing
 	- MoveDirection calculation for directional animations
@@ -11,23 +11,28 @@
 	- Proper cleanup using Trove
 	- Debug mode support
 	- Inverse kinematics support
+	- UseAnimationController optimization support (client-side physics NPCs)
 ]]
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local BetterAnimate = require(ReplicatedStorage.ClientSource.Utilities.BetterAnimate)
 
 local NPCAnimator = {}
-NPCAnimator.DebugMode = false -- Set to true to enable debug visualization
+NPCAnimator.DebugMode = true -- Set to true to enable debug visualization
 
 -- Track BetterAnimate instances for each NPC
-local AnimatorInstances = {} -- [npcModel] = {animator, updateThread, targetModel, trove}
+local AnimatorInstances = {} -- [npcModel] = {animator, updateThread, targetModel, trove, npcData?}
 
 --[[
 	Setup BetterAnimate for an NPC with full feature support
-	
-	@param npc Model - Server NPC model
+
+	@param npc Model - Server NPC model (or visual model for UseAnimationController)
 	@param visualModel Model? - Optional client visual model (uses npc if not provided)
-	@param options table? - Optional configuration {debug: boolean, inverseKinematics: boolean}
+	@param options table? - Optional configuration:
+		- debug: boolean - Enable debug visualization
+		- inverseKinematics: boolean - Enable inverse kinematics (default true)
+		- npcData: table? - For UseAnimationController NPCs, the simulation data from ClientNPCManager
+			Contains: Position, MovementState, Velocity, IsJumping, Orientation, etc.
 ]]
 function NPCAnimator.Setup(npc, visualModel, options)
 	-- Avoid duplicate setup
@@ -56,6 +61,7 @@ function NPCAnimator.Setup(npc, visualModel, options)
 	options = options or {}
 	local enableDebug = options.debug or NPCAnimator.DebugMode
 	local enableIK = options.inverseKinematics ~= false -- Default true
+	local npcData = options.npcData -- For UseAnimationController NPCs
 
 	-- Get rig type
 	local rigType = humanoid.RigType.Name -- "R6" or "R15"
@@ -97,17 +103,69 @@ function NPCAnimator.Setup(npc, visualModel, options)
 	-- Setup tool animation support
 	NPCAnimator.SetupToolSupport(animator, targetModel, primaryPart, physicalProperties)
 
+	-- Store reference to npcData for dynamic access (allows late binding via LinkNPCData)
+	local npcDataRef = { value = npcData }
+
+	-- Always enable position-based velocity for NPC visual models
+	-- This is needed because UseAnimationController NPCs have no physics (AssemblyLinearVelocity = 0)
+	-- When npcData is available, use simulation data; otherwise fall back to visual model position
+	animator.FastConfig.UsePositionBasedVelocity = true
+	animator.FastConfig.PositionProvider = function()
+		local data = npcDataRef.value
+		return data and data.Position or primaryPart.Position
+	end
+	animator.FastConfig.OrientationProvider = function()
+		local data = npcDataRef.value
+		return data and data.Orientation or primaryPart.CFrame
+	end
+
+	-- Debug: track frames for debug output
+	local debugFrameCounter = 0
+	local DEBUG_INTERVAL = 60 -- Print debug every N frames
+
 	-- Setup main animation loop
 	local updateThread = animator.Trove:Add(task.defer(function()
 		while npc.Parent and targetModel.Parent do
 			local deltaTime = task.wait()
 
-			-- BetterAnimate automatically calculates MoveDirection from velocity
-			-- This works for both players and NPCs on the client
-			-- No need to manually set FastConfig.MoveDirection
+			local currentState
+			local currentNPCData = npcDataRef.value
 
-			-- Determine current state
-			local currentState = nextState or humanoid:GetState().Name
+			-- Determine animation state
+			if currentNPCData then
+				-- UseAnimationController mode: use npcData for state
+				if currentNPCData.IsJumping then
+					currentState = "Jumping"
+				elseif nextState then
+					currentState = nextState
+				else
+					currentState = "Running" -- BetterAnimate handles idle/walk/run based on speed
+				end
+
+				-- Debug output
+				if NPCAnimator.DebugMode then
+					debugFrameCounter = debugFrameCounter + 1
+					if debugFrameCounter >= DEBUG_INTERVAL then
+						debugFrameCounter = 0
+						local velocity = animator._CalculatedVelocity or Vector3.zero
+						local moveDir = animator._MoveDirection or Vector3.zero
+						local speed = animator._Speed or 0
+						print(string.format(
+							"[NPCAnimator Debug] %s: Pos=%s, Vel=%.1f, MoveDir=%.2f, Speed=%.1f, State=%s, MovementState=%s",
+							npc.Name,
+							tostring(currentNPCData.Position),
+							velocity.Magnitude,
+							moveDir.Magnitude,
+							speed,
+							currentState,
+							currentNPCData.MovementState or "nil"
+						))
+					end
+				end
+			else
+				-- Traditional mode: use Humanoid state
+				currentState = nextState or humanoid:GetState().Name
+			end
 
 			-- Step animator
 			animator:Step(deltaTime, currentState)
@@ -125,9 +183,43 @@ function NPCAnimator.Setup(npc, visualModel, options)
 		updateThread = updateThread,
 		targetModel = targetModel,
 		trove = animator.Trove,
+		npcDataRef = npcDataRef,
 	}
 
-	print("[NPCAnimator] Setup animator for:", npc.Name, "Rig:", rigType, "IK:", enableIK, "Debug:", enableDebug)
+	local modeStr = npcData and "UseAnimationController" or "Traditional"
+	print("[NPCAnimator] Setup animator for:", npc.Name, "Rig:", rigType, "Mode:", modeStr, "IK:", enableIK, "Debug:", enableDebug)
+end
+
+--[[
+	Link existing animator instance to npcData (for late binding)
+
+	Used when ClientPhysicsRenderer creates the visual model before
+	ClientNPCManager has linked the npcData.
+
+	@param npc Model - The NPC model key
+	@param npcData table - The simulation data from ClientNPCManager
+]]
+function NPCAnimator.LinkNPCData(npc, npcData)
+	local instance = AnimatorInstances[npc]
+	if instance then
+		-- Update the npcData reference - PositionProvider/OrientationProvider will use it automatically
+		instance.npcDataRef.value = npcData
+
+		if NPCAnimator.DebugMode then
+			print("[NPCAnimator] Linked npcData to:", npc.Name)
+		end
+	end
+end
+
+--[[
+	Get the npcData linked to an animator instance
+
+	@param npc Model - The NPC model key
+	@return table? - The npcData or nil
+]]
+function NPCAnimator.GetNPCData(npc)
+	local instance = AnimatorInstances[npc]
+	return instance and instance.npcDataRef and instance.npcDataRef.value
 end
 
 --[[

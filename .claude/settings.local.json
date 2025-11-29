@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "mcp__zilliz-code-context__search_code"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}

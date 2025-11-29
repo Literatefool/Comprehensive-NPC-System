@@ -1,6 +1,6 @@
 # UseAnimationController - Client-Side Physics Optimization Plan
 
-### This is a work-in-progress documentation plan, it is not implemented yet.
+### This feature has been IMPLEMENTED as of 2025-11-29.
 
 ### Duplicate source file:
 
@@ -1094,6 +1094,24 @@ The `UseAnimationController` optimization is a **powerful but risky** feature th
 
 ---
 
-**Document Version**: 1.3
+**Document Version**: 2.0
 **Last Updated**: 2025-11-29
-**Status**: Implementation Plan (Updated - Ready for Implementation)
+**Status**: IMPLEMENTED
+
+## Files Created/Modified
+
+### Server-Side (NPC_Service)
+- `src/ReplicatedStorage/SharedSource/Datas/NPCs/OptimizationConfig.lua` - **NEW** - Configuration file
+- `src/ServerScriptService/ServerSource/Server/NPC_Service/init.lua` - **MODIFIED** - Added UseAnimationController support
+- `src/ServerScriptService/ServerSource/Server/NPC_Service/Components/Others/ClientPhysicsSpawner.lua` - **NEW** - Data-only NPC spawner
+- `src/ServerScriptService/ServerSource/Server/NPC_Service/Components/Others/ClientPhysicsSync.lua` - **NEW** - Position sync handling
+- `src/ServerScriptService/ServerSource/Server/NPC_Service/Components/Others/ServerFallbackSimulator.lua` - **NEW** - Fallback for unclaimed NPCs
+
+### Client-Side (NPC_Controller)
+- `src/ReplicatedStorage/ClientSource/Client/NPC_Controller/init.lua` - **MODIFIED** - Added UseAnimationController awareness
+- `src/ReplicatedStorage/ClientSource/Client/NPC_Controller/Components/Others/ClientNPCManager.lua` - **NEW** - Main client manager
+- `src/ReplicatedStorage/ClientSource/Client/NPC_Controller/Components/Others/ClientNPCSimulator.lua` - **NEW** - Simulation logic
+- `src/ReplicatedStorage/ClientSource/Client/NPC_Controller/Components/Others/ClientPathfinding.lua` - **NEW** - NoobPath wrapper
+- `src/ReplicatedStorage/ClientSource/Client/NPC_Controller/Components/Others/ClientMovement.lua` - **NEW** - Movement behaviors
+- `src/ReplicatedStorage/ClientSource/Client/NPC_Controller/Components/Others/ClientJumpSimulator.lua` - **NEW** - Jump physics
+- `src/ReplicatedStorage/ClientSource/Client/NPC_Controller/Components/Others/ClientPhysicsRenderer.lua` - **NEW** - Visual rendering
