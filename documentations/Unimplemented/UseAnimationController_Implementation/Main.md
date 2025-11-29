@@ -1092,48 +1092,6 @@ The `UseAnimationController` optimization is a **powerful but risky** feature th
 
 ### Version 1.3 (2025-11-29)
 
-- **Server fallback for unclaimed NPCs**: Added minimal 1 FPS server simulation for orphaned NPCs
-  - `ServerFallbackSimulator` component with configurable timeout
-  - Simple wander AI (no pathfinding) - moves toward random destination
-  - Automatically hands off to client when one comes in range
-  - Adds only ~1.7% of full server physics load per fallback NPC
-  - `MAX_SERVER_SIMULATED = 100` prevents server overload
-- **Minimal exploit mitigation** (without returning to server physics):
-  - Soft bounds checking: Clamps positions to `MaxWanderRadius`, doesn't reject
-  - Per-client ownership limit enforcement on server
-  - Client-side periodic ground check (every 2 seconds)
-  - Server fallback prevents permanent NPC freezing
-  - Summary table of all mitigations with server load impact
-- **Added Phase 6**: Server Fallback & Exploit Mitigation implementation phase
-- **Updated OptimizationConfig**: Added `ServerFallback` and `ExploitMitigation` sections
-
-### Version 1.2 (2025-11-28)
-
-- **Client disconnection handling**: Added comprehensive system for NPC reassignment when simulating client leaves
-  - Server-side ownership tracking (lightweight - just a table lookup)
-  - `ClaimNPC`/`ReleaseNPC` methods for ownership management
-  - `NPCsOrphaned` Knit signal broadcasts orphaned NPCs to remaining clients
-  - Distance-based claiming: closer clients claim faster (delay = base + distance × factor)
-  - Graceful handoff when player moves away from NPCs
-  - Optional timeout detection for crashed clients (runs every 5 seconds)
-  - Zero server physics simulation maintained - clients handle all reassignment logic
-- **Fixed deprecated API**: Replaced `SetPrimaryPartCFrame` with `PivotTo` in ClientPhysicsRenderer
-
-### Version 1.1 (2025-10-12)
-
-- **Removed duplicate configurations**: Rendering settings now exclusively in `RenderConfig.lua`
-- **Dynamic gravity**: Changed to use `workspace.Gravity` instead of hardcoded values
-- **Distance-based broadcasting**: Added optimized position sync system using Knit signals
-  - Server only broadcasts updates to nearby clients (70-95% network reduction)
-  - Client sends position updates via Knit service method
-  - No position validation (prevents false positives from network latency)
-- **Configuration separation**: Clear distinction between `OptimizationConfig` (physics) and `RenderConfig` (rendering)
-- **Added ClientPhysicsSync component**: Server-side handler for distance-based position broadcasting
-- **Clarified rendering systems**: Renamed to `ClientPhysicsRenderer` and added comparison table
-  - Existing `NPCRenderer.lua` handles traditional server-physics NPCs
-  - New `ClientPhysicsRenderer.lua` handles UseAnimationController client-physics NPCs
-  - Both systems coexist and serve different purposes
-
 ---
 
 **Document Version**: 1.3
