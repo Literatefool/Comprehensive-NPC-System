@@ -16,6 +16,7 @@ A production-ready, highly flexible NPC system built on **SuperbulletFrameworkV1
 - [Configuration](#%EF%B8%8F-configuration)
 - [Usage Examples](#-usage-examples)
 - [System Components](#-system-components)
+- [Implemented Optimizations](#-implemented-optimizations)
 - [Future Implementations](#-future-implementations)
 - [Testing & Examples](#-testing--examples)
 - [Performance](#-performance)
@@ -35,9 +36,10 @@ A production-ready, highly flexible NPC system built on **SuperbulletFrameworkV1
 ### 🚀 Performance & Optimization
 
 - **Client-Side Rendering**: Optional client-side rendering system reduces server load
+- **UseClientPhysics Mode**: Offload physics to clients for 1000+ NPCs with smooth gameplay
 - **Distance-Based Culling**: Intelligent rendering based on player proximity
 - **Batch Operations**: Efficient NPC spawning and management
-- **Scalable to 100+ NPCs**: Tested and optimized for large-scale scenarios
+- **Scalable to 1000+ NPCs**: With UseClientPhysics mode, support massive NPC counts
 
 ### 🎯 Advanced Features
 
@@ -57,8 +59,8 @@ A production-ready, highly flexible NPC system built on **SuperbulletFrameworkV1
 
 ### 🔮 Future-Proof
 
-- **Planned Optimizations**: Client-side physics simulation for 1000+ NPCs
-- **Advanced Hitbox System**: Batch detection for high fire rate scenarios
+- **UseClientPhysics Mode**: Client-side physics simulation supporting 1000+ NPCs (fully implemented!)
+- **Advanced Hitbox System**: Batch detection for high fire rate scenarios (planned)
 - **Actively Maintained**: Regular updates and improvements
 - **Open Architecture**: Easy to extend for game-specific needs
 
@@ -70,6 +72,7 @@ A production-ready, highly flexible NPC system built on **SuperbulletFrameworkV1
 
 - ✅ **Server-Authoritative NPCs** - Full server control over NPC state and behavior
 - ✅ **Client-Side Rendering** - Optional visual rendering on client for optimization
+- ✅ **UseClientPhysics Mode** - Client-side physics for 1000+ NPCs with minimal lag
 - ✅ **Advanced Pathfinding** - NoobPath integration with jump and obstacle handling
 - ✅ **Dual Sight Detection** - Omnidirectional (360°) and Directional (cone-based)
 - ✅ **Flexible Movement System** - Ranged, Melee, and custom movement modes
@@ -214,6 +217,9 @@ NPC_Service:SpawnNPC({
     UsePathfinding: boolean?,  -- Use advanced pathfinding vs simple MoveTo() (default: true)
     EnableIdleWander: boolean?,     -- Enable random wandering (default: true)
     EnableCombatMovement: boolean?, -- Enable combat movement (default: true)
+
+    -- Performance Optimization
+    UseClientPhysics: boolean?, -- Offload physics/pathfinding to client for 1000+ NPCs (default: false)
 
     -- Client Rendering (Optional)
     ClientRenderData: {
@@ -431,11 +437,11 @@ NPC_Service:DestroyNPC(myNPC)
 
 ---
 
-## 🔮 Future Implementations
+## 🎉 Implemented Optimizations
 
-### UseAnimationController - Client-Side Physics Optimization
+### UseClientPhysics - Client-Side Physics Optimization
 
-> **Status**: 🚧 Not Yet Implemented
+> **Status**: ✅ Fully Implemented
 
 An advanced optimization that offloads NPC physics and pathfinding calculations entirely to the client, enabling support for **1000+ NPCs** with minimal lag.
 
@@ -449,9 +455,20 @@ An advanced optimization that offloads NPC physics and pathfinding calculations 
 
 **⚠️ Security Trade-off:** Client has position authority (no validation) to prevent ping-related false positives. Not recommended for combat NPCs.
 
-📖 **Implementation Plan:** [UseAnimationController_Implementation_Plan.md](https://github.com/Froredion/Comprehensive-NPC-System/blob/master/documentations/Unimplemented/UseAnimationController_Implementation_Plan.md)
+**Usage:**
+```lua
+local npc = NPC_Service:SpawnNPC({
+    Name = "OptimizedNPC",
+    Position = Vector3.new(0, 10, 0),
+    ModelPath = ReplicatedStorage.Assets.NPCs.Characters.Rig,
+    UseClientPhysics = true,  -- Enable client-side physics for 1000+ NPC support
+    -- ... other options
+})
+```
 
 ---
+
+## 🔮 Future Implementations
 
 ### EnableOptimizedHitbox - Batch Hitbox Detection
 
@@ -546,10 +563,10 @@ Client-side rendering can be configured in `src/ReplicatedStorage/SharedSource/D
 4. **Disable Visualizers** - Turn off in production builds
 5. **Use Faction System** - Same-faction NPCs won't waste cycles targeting each other
 
-### Future Performance (With Unimplemented Features)
+### High-Performance Mode (UseClientPhysics)
 
-- **UseAnimationController**: 1000+ NPCs with smooth gameplay
-- **OptimizedHitbox**: 70-95% network traffic reduction for combat
+- **UseClientPhysics**: 1000+ NPCs with smooth gameplay (fully implemented!)
+- **OptimizedHitbox**: 70-95% network traffic reduction for combat (planned)
 
 ---
 
@@ -559,7 +576,6 @@ This is an open-source project. Contributions are welcome!
 
 ### Areas for Contribution
 
-- Implement UseAnimationController optimization
 - Implement OptimizedHitbox batch detection
 - Add more movement behaviors
 - Create additional sight detection modes
