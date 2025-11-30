@@ -1,5 +1,5 @@
 --[[
-	ClientSightDetector - Client-side sight detection for UseAnimationController NPCs
+	ClientSightDetector - Client-side sight detection for UseClientPhysics NPCs
 
 	Handles:
 	- Enemy detection within sight range

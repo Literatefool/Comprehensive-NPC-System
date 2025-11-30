@@ -6,7 +6,7 @@
 	- Full BetterAnimate integration with proper timing
 	- Event system (MarkerReached, NewState, etc.)
 	- Inverse kinematics support
-	- UseAnimationController optimization support (client-side physics NPCs)
+	- UseClientPhysics optimization support (client-side physics NPCs)
 	- Proper cleanup using Trove
 ]]
 
@@ -21,14 +21,15 @@ local AnimatorInstances = {} -- [npcModel] = {animator, updateThread, targetMode
 --[[
 	Setup BetterAnimate for an NPC with full feature support
 
-	@param npc Model - Server NPC model (or visual model for UseAnimationController)
+	@param npc Model - Server NPC model (or visual model for UseClientPhysics)
 	@param visualModel Model? - Optional client visual model (uses npc if not provided)
 	@param options table? - Optional configuration:
 		- debug: boolean - Enable debug visualization
 		- inverseKinematics: boolean - Enable inverse kinematics (default true)
-		- npcData: table? - For UseAnimationController NPCs, the simulation data from ClientNPCManager
+		- npcData: table? - For UseClientPhysics NPCs, the simulation data from ClientNPCManager
 			Contains: Position, MovementState, Velocity, IsJumping, Orientation, etc.
 ]]
+
 function NPCAnimator.Setup(npc, visualModel, options)
 	-- Avoid duplicate setup
 	if AnimatorInstances[npc] then
@@ -139,7 +140,7 @@ function NPCAnimator.Setup(npc, visualModel, options)
 
 			-- Determine animation state
 			if currentNPCData then
-				-- UseAnimationController mode: use npcData for state
+				-- UseClientPhysics mode: use npcData for state
 				if currentNPCData.IsJumping then
 					currentState = "Jumping"
 				elseif nextState then
@@ -209,7 +210,7 @@ function NPCAnimator.Setup(npc, visualModel, options)
 		_NPCADBG_IsTracked = isTracked, -- For debug tracking
 	}
 
-	local modeStr = npcData and "UseAnimationController" or "Traditional"
+	local modeStr = npcData and "UseClientPhysics" or "Traditional"
 	print("[NPCAnimator] Setup animator for:", npc.Name, "Rig:", rigType, "Mode:", modeStr, "IK:", enableIK, "Debug:", enableDebug)
 end
 

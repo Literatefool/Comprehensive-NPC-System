@@ -1,5 +1,5 @@
 --[[
-	ClientNPCManager - Main client-side manager for UseAnimationController NPCs
+	ClientNPCManager - Main client-side manager for UseClientPhysics NPCs
 
 	Responsibilities:
 	- Monitor ReplicatedStorage.ActiveNPCs for new NPCs
@@ -345,7 +345,7 @@ function ClientNPCManager.StartSimulation(npcFolder)
 		ClientSightDetector.SetupSightDetector(npcData)
 	end
 
-	-- Link npcData to animator if visual model already exists (for UseAnimationController support)
+	-- Link npcData to animator if visual model already exists (for UseClientPhysics support)
 	if ClientPhysicsRenderer then
 		local visualModel = ClientPhysicsRenderer.GetVisualModel(npcID)
 		if visualModel then

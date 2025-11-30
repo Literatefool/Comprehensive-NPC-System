@@ -14,10 +14,10 @@ local OptimizationConfig = require(ReplicatedStorage.SharedSource.Datas.NPCs.Opt
 ---- Knit Controllers
 
 function NPC_Controller:KnitStart()
-	-- Check if UseAnimationController system should be active
+	-- Check if UseClientPhysics system should be active
 	-- This runs after all components are initialized
-	if OptimizationConfig.UseAnimationController then
-		print("[NPC_Controller] UseAnimationController is enabled globally")
+	if OptimizationConfig.UseClientPhysics then
+		print("[NPC_Controller] UseClientPhysics is enabled globally")
 	end
 
 	-- The ClientNPCManager will detect and handle client-physics NPCs

@@ -1,19 +1,19 @@
 --[[
 	OptimizationConfig - Advanced NPC optimization settings
 
-	WARNING: UseAnimationController is an ADVANCED optimization
+	WARNING: UseClientPhysics is an ADVANCED optimization
 	- Offloads ALL physics to client
 	- Client has full position authority (no anti-exploit validation)
 	- Requires extensive testing
 	- NOT recommended for beginners
 
 	For implementation details, see:
-	documentations/Unimplemented/UseAnimationController_Implementation/Main.md
+	documentations/Unimplemented/UseClientPhysics_Implementation/Main.md
 ]]
 
 local OptimizationConfig = {
 	--[[
-		UseAnimationController - Enable client-side physics simulation
+		UseClientPhysics - Enable client-side physics simulation
 
 		CRITICAL WARNINGS:
 		1. NO physics on server at all
@@ -45,9 +45,9 @@ local OptimizationConfig = {
 		- NPCs tied to game progression
 		- Any NPC that affects gameplay outcomes
 	]]
-	UseAnimationController = false, -- DISABLED by default
+	UseClientPhysics = true, -- DISABLED by default
 
-	-- Client-side simulation settings (only if UseAnimationController = true)
+	-- Client-side simulation settings (only if UseClientPhysics = true)
 	ClientSimulation = {
 		-- Distance at which client starts simulating NPC (studs)
 		SIMULATION_DISTANCE = 200,

@@ -1,5 +1,5 @@
 --[[
-	ClientMovement - Movement behavior logic for UseAnimationController NPCs
+	ClientMovement - Movement behavior logic for UseClientPhysics NPCs
 
 	Handles:
 	- Different movement modes (Ranged, Melee)

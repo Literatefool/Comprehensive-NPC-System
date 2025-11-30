@@ -1,5 +1,5 @@
 --[[
-	ClientJumpSimulator - Physics-based jump simulation for UseAnimationController NPCs
+	ClientJumpSimulator - Physics-based jump simulation for UseClientPhysics NPCs
 
 	Handles:
 	- Gravity-based jump arc calculation

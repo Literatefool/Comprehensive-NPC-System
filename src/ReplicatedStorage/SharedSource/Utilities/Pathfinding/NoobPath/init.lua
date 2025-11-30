@@ -140,7 +140,7 @@ end
 	- NoobPath computes path waypoints but doesn't call MoveTo()
 	- Caller must manually update position by reading GetWaypoint() each frame
 	- Caller must manually call AdvanceWaypoint() when reaching waypoints
-	- Used for client-side NPCs with custom physics (UseAnimationController)
+	- Used for client-side NPCs with custom physics (UseClientPhysics)
 
 	BACKWARDS COMPATIBILITY:
 	------------------------
@@ -474,7 +474,7 @@ function NoobPath:TravelWaypoint()
 		- Caller must check waypoint.Action for jumps
 		- Caller must call AdvanceWaypoint() when reaching waypoints
 
-		This allows custom physics systems (like UseAnimationController)
+		This allows custom physics systems (like UseClientPhysics)
 		to use pathfinding without Humanoid physics interference.
 	]]
 	if not self.ManualMovement then

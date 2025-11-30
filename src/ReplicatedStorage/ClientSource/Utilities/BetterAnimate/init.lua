@@ -251,7 +251,7 @@ do
 			AssemblyLinearVelocity: Vector3?, -- Moving speed
 			AlwaysUseCurrentTransition: boolean?,
 
-			-- UseAnimationController support (client-physics NPCs with no AssemblyLinearVelocity)
+			-- UseClientPhysics support (client-physics NPCs with no AssemblyLinearVelocity)
 			-- When set, velocity is calculated from position changes instead of AssemblyLinearVelocity
 			UsePositionBasedVelocity: boolean?,
 			PositionProvider: (() -> Vector3)?, -- Function that returns current position (e.g., from npcData.Position)
@@ -265,7 +265,7 @@ do
 		BetterAnimate._Animator = nil :: AnimationController | Humanoid
 		BetterAnimate._RigType = nil :: "R6" | "R15" | "Custom" --Enum.HumanoidRigType
 
-		-- Position-based velocity tracking (for UseAnimationController NPCs)
+		-- Position-based velocity tracking (for UseClientPhysics NPCs)
 		BetterAnimate._LastPosition = nil :: Vector3?
 		BetterAnimate._CalculatedVelocity = nil :: Vector3?
 
@@ -941,7 +941,7 @@ do
 				do -- Speed of character
 					local AssemblyLinearVelocity
 
-					-- UseAnimationController mode: calculate velocity from position changes
+					-- UseClientPhysics mode: calculate velocity from position changes
 					if self.FastConfig.UsePositionBasedVelocity then
 						local currentPosition
 						if self.FastConfig.PositionProvider then

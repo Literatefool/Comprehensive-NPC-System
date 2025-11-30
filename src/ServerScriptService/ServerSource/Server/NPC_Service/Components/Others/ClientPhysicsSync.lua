@@ -1,5 +1,5 @@
 --[[
-	ClientPhysicsSync - Server-side position synchronization for UseAnimationController
+	ClientPhysicsSync - Server-side position synchronization for UseClientPhysics
 
 	Handles:
 	- Receiving position updates from simulating clients

@@ -1,5 +1,5 @@
 --[[
-	ClientPhysicsRenderer - Visual rendering for UseAnimationController NPCs
+	ClientPhysicsRenderer - Visual rendering for UseClientPhysics NPCs
 
 	This is DIFFERENT from NPCRenderer.lua:
 	- NPCRenderer.lua - Renders visuals on top of server-physics NPCs (traditional approach)
@@ -335,7 +335,7 @@ function ClientPhysicsRenderer.RenderNPC(npcID)
 			task.spawn(function()
 				task.wait(0.5) -- Wait for model to settle
 
-				-- Get npcData from ClientNPCManager for UseAnimationController support
+				-- Get npcData from ClientNPCManager for UseClientPhysics support
 				local ClientNPCManagerModule = script.Parent:FindFirstChild("ClientNPCManager")
 				local npcData = nil
 				if ClientNPCManagerModule then
@@ -343,7 +343,7 @@ function ClientPhysicsRenderer.RenderNPC(npcID)
 					npcData = manager.GetSimulatedNPC(npcID)
 				end
 
-				-- Build options with npcData for UseAnimationController mode
+				-- Build options with npcData for UseClientPhysics mode
 				local animatorOptions = config.ClientRenderData and config.ClientRenderData.animatorOptions or {}
 				animatorOptions.npcData = npcData
 

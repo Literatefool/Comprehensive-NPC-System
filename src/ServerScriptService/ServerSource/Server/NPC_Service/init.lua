@@ -7,7 +7,7 @@ local NPC_Service = Knit.CreateService({
 	Name = "NPC_Service",
 	Instance = script,
 	Client = {
-		-- Signals for UseAnimationController client-physics system
+		-- Signals for UseClientPhysics client-physics system
 		NPCPositionUpdated = Knit.CreateSignal(), -- Broadcast NPC position updates to nearby clients
 		NPCsOrphaned = Knit.CreateSignal(), -- Broadcast when NPCs need new owners
 		NPCJumpTriggered = Knit.CreateSignal(), -- Broadcast when NPC should jump (for testing/manual control)
@@ -16,7 +16,7 @@ local NPC_Service = Knit.CreateService({
 	-- Registry of all active NPCs (traditional server-physics NPCs)
 	ActiveNPCs = {}, -- [npcModel] = npcData
 
-	-- Registry for client-physics NPCs (UseAnimationController = true)
+	-- Registry for client-physics NPCs (UseClientPhysics = true)
 	ActiveClientPhysicsNPCs = {}, -- [npcID] = npcData
 })
 
@@ -51,7 +51,7 @@ local OptimizationConfig = require(ReplicatedStorage.SharedSource.Datas.NPCs.Opt
 			* EnemyType: string? - Combat classification (e.g., "Ranged", "Melee")
 
 		-- OPTIMIZATION (ADVANCED)
-		- UseAnimationController: boolean? - Enable client-side physics (default: false)
+		- UseClientPhysics: boolean? - Enable client-side physics (default: false)
 			WARNING: This is an ADVANCED feature with the following implications:
 				1. NO physics simulation on server
 				2. Client handles ALL pathfinding and movement
@@ -59,23 +59,23 @@ local OptimizationConfig = require(ReplicatedStorage.SharedSource.Datas.NPCs.Opt
 				4. Only for non-critical NPCs (ambient, visual-only)
 				5. Everything rendered on client-side
 				6. Can handle 1000+ NPCs with smooth gameplay at all ping levels
-			For implementation details, see: documentations/Unimplemented/UseAnimationController_Implementation/Main.md
+			For implementation details, see: documentations/Unimplemented/UseClientPhysics_Implementation/Main.md
 
 		- EnableOptimizedHitbox: boolean? - (UNIMPLEMENTED) Enable client-side batch hitbox detection for high fire rate scenarios
 			This enables batch detection for weapons/turrets with high fire rates, significantly reducing network traffic and server load.
 			Particularly useful for tower defense games with many NPCs and rapid-fire turrets (recommended for 50+ NPCs with high fire rate weapons).
 			For implementation details, see: documentations/Unimplemented/Optimized_Hitbox.md
 
-	@return Model|string - The spawned NPC model (traditional) or NPC ID (UseAnimationController)
+	@return Model|string - The spawned NPC model (traditional) or NPC ID (UseClientPhysics)
 ]]
 function NPC_Service:SpawnNPC(config)
-	-- Check if UseAnimationController is enabled (per-NPC or global)
-	local useAnimController = config.UseAnimationController
-	if useAnimController == nil then
-		useAnimController = OptimizationConfig.UseAnimationController
+	-- Check if UseClientPhysics is enabled (per-NPC or global)
+	local useClientPhysics = config.UseClientPhysics
+	if useClientPhysics == nil then
+		useClientPhysics = OptimizationConfig.UseClientPhysics
 	end
 
-	if useAnimController then
+	if useClientPhysics then
 		-- Use client-side physics approach (returns NPC ID, not model)
 		return NPC_Service.Components.ClientPhysicsSpawner:SpawnNPC(config)
 	else
@@ -107,12 +107,12 @@ end
 --[[
 	Manually set target for NPC
 
-	@param npcModelOrID Model|string - The NPC model (traditional) or NPC ID (UseAnimationController)
+	@param npcModelOrID Model|string - The NPC model (traditional) or NPC ID (UseClientPhysics)
 	@param target Model? - Target to set (nil to clear)
 ]]
 function NPC_Service:SetTarget(npcModelOrID, target)
 	if typeof(npcModelOrID) == "string" then
-		-- Client-physics NPC (UseAnimationController)
+		-- Client-physics NPC (UseClientPhysics)
 		if NPC_Service.Components.ClientPhysicsSpawner then
 			NPC_Service.Components.ClientPhysicsSpawner:SetTarget(npcModelOrID, target)
 		end
@@ -125,12 +125,12 @@ end
 --[[
 	Manually set destination for NPC
 
-	@param npcModelOrID Model|string - The NPC model (traditional) or NPC ID (UseAnimationController)
+	@param npcModelOrID Model|string - The NPC model (traditional) or NPC ID (UseClientPhysics)
 	@param destination Vector3? - Destination to set (nil to clear)
 ]]
 function NPC_Service:SetDestination(npcModelOrID, destination)
 	if typeof(npcModelOrID) == "string" then
-		-- Client-physics NPC (UseAnimationController)
+		-- Client-physics NPC (UseClientPhysics)
 		if NPC_Service.Components.ClientPhysicsSpawner then
 			NPC_Service.Components.ClientPhysicsSpawner:SetDestination(npcModelOrID, destination)
 		end
@@ -143,11 +143,11 @@ end
 --[[
 	Destroy NPC and cleanup
 
-	@param npcModelOrID Model|string - The NPC model (traditional) or NPC ID (UseAnimationController)
+	@param npcModelOrID Model|string - The NPC model (traditional) or NPC ID (UseClientPhysics)
 ]]
 function NPC_Service:DestroyNPC(npcModelOrID)
 	if typeof(npcModelOrID) == "string" then
-		-- Client-physics NPC (UseAnimationController)
+		-- Client-physics NPC (UseClientPhysics)
 		if NPC_Service.Components.ClientPhysicsSpawner then
 			NPC_Service.Components.ClientPhysicsSpawner:DestroyNPC(npcModelOrID)
 		end
@@ -158,7 +158,7 @@ function NPC_Service:DestroyNPC(npcModelOrID)
 end
 
 --[[
-	Damage a client-physics NPC (UseAnimationController only)
+	Damage a client-physics NPC (UseClientPhysics only)
 	Health is server-authoritative for gameplay integrity.
 
 	@param npcID string - The NPC ID
@@ -171,7 +171,7 @@ function NPC_Service:DamageClientPhysicsNPC(npcID, damage)
 end
 
 --[[
-	Heal a client-physics NPC (UseAnimationController only)
+	Heal a client-physics NPC (UseClientPhysics only)
 
 	@param npcID string - The NPC ID
 	@param amount number - Amount to heal
@@ -196,7 +196,7 @@ function NPC_Service:GetClientPhysicsNPCData(npcID)
 end
 
 --[[
-	Trigger a jump for a client-physics NPC (UseAnimationController only)
+	Trigger a jump for a client-physics NPC (UseClientPhysics only)
 	Broadcasts to all clients - the simulating client will execute the jump.
 
 	@param npcID string - The NPC ID
@@ -212,7 +212,7 @@ function NPC_Service:TriggerJump(npcID)
 	NPC_Service.Client.NPCJumpTriggered:FireAll(npcID)
 end
 
----- Client Methods for UseAnimationController ----
+---- Client Methods for UseClientPhysics ----
 
 --[[
 	Client method: Update NPC position (called by simulating client)
@@ -248,7 +248,7 @@ end
 
 function NPC_Service:KnitInit()
 
-	---- Handle player disconnection for UseAnimationController system
+	---- Handle player disconnection for UseClientPhysics system
 	Players.PlayerRemoving:Connect(function(player)
 		if NPC_Service.Components.ClientPhysicsSync then
 			NPC_Service.Components.ClientPhysicsSync.HandlePlayerLeft(player)

@@ -1,5 +1,5 @@
 --[[
-	ClientNPCSimulator - Core simulation logic for UseAnimationController NPCs
+	ClientNPCSimulator - Core simulation logic for UseClientPhysics NPCs
 
 	ARCHITECTURE OVERVIEW:
 	----------------------

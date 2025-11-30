@@ -1,5 +1,5 @@
 --[[
-	ClientPhysicsSpawner - Spawner for client-physics NPCs (UseAnimationController = true)
+	ClientPhysicsSpawner - Spawner for client-physics NPCs (UseClientPhysics = true)
 
 	This spawner creates data-only NPC representations in ReplicatedStorage.
 	No physical model is created on the server - clients handle all physics and rendering.
@@ -205,7 +205,7 @@ local function initializeNPCData(npcID, config, position)
 		CleanedUp = false,
 
 		-- Flag to identify client-physics NPCs
-		UseAnimationController = true,
+		UseClientPhysics = true,
 
 		-- Connections for cleanup
 		Connections = {},
@@ -245,7 +245,7 @@ local function setupCleanup(npcID, npcData, npcFolder)
 end
 
 --[[
-	Spawn a client-physics NPC (UseAnimationController = true)
+	Spawn a client-physics NPC (UseClientPhysics = true)
 
 	This creates a data-only representation - no physical model on server.
 	Clients handle all physics, pathfinding, and rendering.

@@ -4,7 +4,7 @@
 	ARCHITECTURE OVERVIEW:
 	----------------------
 	This mirrors the server-side PathfindingManager but runs on the client
-	for UseAnimationController NPCs with custom physics.
+	for UseClientPhysics NPCs with custom physics.
 
 	KEY DIFFERENCES FROM SERVER:
 	-----------------------------
@@ -41,7 +41,7 @@
 	BACKWARDS COMPATIBILITY:
 	------------------------
 	Server-side NPCs continue using PathfindingManager (normal NoobPath mode).
-	This code ONLY affects client-side NPCs with UseAnimationController=true.
+	This code ONLY affects client-side NPCs with UseClientPhysics=true.
 
 	Uses the same NoobPath library for consistent pathfinding behavior.
 ]]
