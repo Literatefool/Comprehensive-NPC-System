@@ -93,8 +93,6 @@ end
 function ClientPhysicsRenderer.Initialize()
 	-- Start distance check loop
 	task.spawn(ClientPhysicsRenderer.DistanceCheckLoop)
-
-	print("[ClientPhysicsRenderer] Initialized for UseAnimationController NPCs")
 end
 
 --[[
@@ -370,10 +368,6 @@ function ClientPhysicsRenderer.RenderNPC(npcID)
 			npcData.VisualModel = visualModel
 		end
 	end
-
-	if RenderConfig.DEBUG_MODE then
-		print("[ClientPhysicsRenderer] Rendered NPC:", npcID)
-	end
 end
 
 --[[
@@ -471,10 +465,6 @@ function ClientPhysicsRenderer.UnrenderNPC(npcID)
 
 	-- Remove from tracking
 	RenderedNPCs[npcID] = nil
-
-	if RenderConfig.DEBUG_MODE then
-		print("[ClientPhysicsRenderer] Unrendered NPC:", npcID)
-	end
 end
 
 --[[

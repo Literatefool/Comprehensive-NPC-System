@@ -625,8 +625,17 @@ function ClientNPCManager.GetAllSimulatedNPCs()
 end
 
 function ClientNPCManager.Start()
-	-- Initialize the manager
-	ClientNPCManager.Initialize()
+	-- Wait for dependencies to be loaded before initializing
+	-- This prevents race condition where Initialize() tries to use NPC_Service before it's loaded
+	task.spawn(function()
+		-- Wait for NPC_Service to be available
+		while not NPC_Service do
+			task.wait()
+		end
+
+		-- Now safe to initialize
+		ClientNPCManager.Initialize()
+	end)
 end
 
 function ClientNPCManager.Init()

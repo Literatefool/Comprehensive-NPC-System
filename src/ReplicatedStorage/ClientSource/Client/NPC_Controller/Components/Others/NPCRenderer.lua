@@ -34,13 +34,9 @@ NPCRenderer.CustomRenderCallback = nil -- function(npc: Model, renderData: table
 function NPCRenderer.InitializeRenderer()
 	-- Check if rendering is enabled
 	if not RenderConfig.ENABLED then
-		print("[NPCRenderer] Rendering disabled via config (RenderConfig.ENABLED = false)")
-		print("[NPCRenderer] Initializing NPCAnimator in standalone mode for server NPC animations")
 		NPCAnimator.InitializeStandalone()
 		return
 	end
-
-	print("[NPCRenderer] Client-side NPC rendering enabled")
 
 	-- Watch for NPCs in workspace.Characters.NPCs
 	local charactersFolder = workspace:WaitForChild("Characters", 10)
@@ -79,8 +75,6 @@ function NPCRenderer.InitializeRenderer()
 	if RenderConfig.MAX_RENDER_DISTANCE then
 		task.spawn(NPCRenderer.DistanceCheckLoop)
 	end
-
-	print("[NPCRenderer] Watching for NPCs in workspace.Characters.NPCs")
 end
 
 --[[
@@ -336,10 +330,6 @@ function NPCRenderer.CreateVisual(npc, modelPath, renderData)
 		-- Setup BetterAnimate after rig is built
 		NPCAnimator.Setup(npc, nil, renderData.animatorOptions)
 	end)
-
-	if RenderConfig.DEBUG_MODE or RunService:IsStudio() then
-		print("[NPCRenderer] ✅ Rendered NPC:", npc.Name, "| Parts:", #renderedParts)
-	end
 end
 
 --[[
@@ -490,10 +480,6 @@ function NPCRenderer.PopulateToolVisuals(npc, tool)
 	else
 		warn("[NPCRenderer] Tool missing Handle for grip:", toolName)
 	end
-
-	if RenderConfig.DEBUG_MODE or RunService:IsStudio() then
-		print("[NPCRenderer] 🔧 Tool Visuals Populated:", npc.Name, "| Tool:", toolName, "| Type:", toolType)
-	end
 end
 
 --[[
@@ -535,10 +521,6 @@ function NPCRenderer.CreateToolGrip(npc, tool, handle)
 	-- Tag as client-rendered for cleanup
 	rightGrip:SetAttribute(CLIENT_RENDER_TAG, true)
 	rightGrip.Parent = rightArm
-
-	if RenderConfig.DEBUG_MODE or RunService:IsStudio() then
-		print("[NPCRenderer] 🤝 Grip created for:", npc.Name, "| Tool:", tool.Name)
-	end
 end
 
 --[[
@@ -647,10 +629,6 @@ function NPCRenderer.CleanupNPC(npc)
 
 	-- Remove from tracking
 	RenderedNPCs[npc] = nil
-
-	if RenderConfig.DEBUG_MODE or RunService:IsStudio() then
-		print("[NPCRenderer] 🗑️ Cleaned up NPC:", npc.Name, "| Parts removed:", partsCount)
-	end
 end
 
 function NPCRenderer.Start()
