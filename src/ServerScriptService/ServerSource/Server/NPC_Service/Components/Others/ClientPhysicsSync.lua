@@ -89,12 +89,6 @@ function ClientPhysicsSync.HandlePositionUpdate(fromPlayer, npcID, newPosition, 
 		newPosition = ClientPhysicsSync.SoftBoundsCheck(npcID, newPosition)
 	end
 
-	-- Debug: print position update receipt
-	if not npcFolder:GetAttribute("_lastServerUpdatePrint") or tick() - npcFolder:GetAttribute("_lastServerUpdatePrint") > 3 then
-		print(string.format("[TD_SERVER_RECV] NPC %s: Received position from %s: %s", npcID, fromPlayer.Name, tostring(newPosition)))
-		npcFolder:SetAttribute("_lastServerUpdatePrint", tick())
-	end
-
 	-- Update position in ReplicatedStorage
 	local positionValue = npcFolder:FindFirstChild("Position")
 	if positionValue then

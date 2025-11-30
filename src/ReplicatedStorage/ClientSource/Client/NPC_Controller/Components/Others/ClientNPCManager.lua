@@ -297,10 +297,8 @@ function ClientNPCManager.StartSimulation(npcFolder)
 			if SimulatedNPCs[npcID] and npcData.IsAlive then
 				-- Vector3.zero means clear destination
 				if newDest == Vector3.zero then
-					print(string.format("[TD_CLIENT_MGR] NPC %s: Destination cleared by server", npcID))
 					npcData.Destination = nil
 				else
-					print(string.format("[TD_CLIENT_MGR] NPC %s: New destination from server: %s", npcID, tostring(newDest)))
 					npcData.Destination = newDest
 				end
 			end
@@ -311,15 +309,11 @@ function ClientNPCManager.StartSimulation(npcFolder)
 	-- Watch for dynamically created Destination value (if server creates it after spawn)
 	local childAddedConnection = npcFolder.ChildAdded:Connect(function(child)
 		if child.Name == "Destination" and child:IsA("Vector3Value") then
-			print(string.format("[TD_CLIENT_MGR] NPC %s: Destination value added dynamically", npcID))
-
 			local destConnection = child.Changed:Connect(function(newDest)
 				if SimulatedNPCs[npcID] and npcData.IsAlive then
 					if newDest == Vector3.zero then
-						print(string.format("[TD_CLIENT_MGR] NPC %s: Destination cleared by server", npcID))
 						npcData.Destination = nil
 					else
-						print(string.format("[TD_CLIENT_MGR] NPC %s: New destination from server: %s", npcID, tostring(newDest)))
 						npcData.Destination = newDest
 					end
 				end
@@ -328,7 +322,6 @@ function ClientNPCManager.StartSimulation(npcFolder)
 
 			-- Apply initial value if set
 			if child.Value ~= Vector3.zero then
-				print(string.format("[TD_CLIENT_MGR] NPC %s: Initial destination from dynamically added value: %s", npcID, tostring(child.Value)))
 				npcData.Destination = child.Value
 			end
 		end
@@ -512,12 +505,6 @@ function ClientNPCManager.PositionSyncLoop()
 
 		for npcID, npcData in pairs(SimulatedNPCs) do
 			if npcData.IsAlive and npcData.Position then
-				-- Debug: print position sync
-				if not npcData._lastSyncDebugPrint or tick() - npcData._lastSyncDebugPrint > 3 then
-					print(string.format("[TD_CLIENT_SYNC] NPC %s: Sending position to server: %s", npcID, tostring(npcData.Position)))
-					npcData._lastSyncDebugPrint = tick()
-				end
-
 				-- Send position update to server
 				NPC_Service:UpdateNPCPosition(npcID, npcData.Position, npcData.Orientation)
 				LastSyncTimes[npcID] = tick()

@@ -38,7 +38,6 @@ local npcIdCounter = 0 -- Counter for unique NPC IDs
 ]]
 function ClientSightVisualizer:SetEnabled(enabled)
 	VISUALIZER_ENABLED = enabled
-	print("[ClientSightVisualizer] Visualizer", enabled and "ENABLED" or "DISABLED")
 
 	-- Cleanup all visualizations if disabled
 	if not enabled then

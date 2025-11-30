@@ -338,17 +338,9 @@ function ClientNPCSimulator.SimulateMovement(npcData, deltaTime)
 
 		local distance = direction.Magnitude
 
-		-- Debug print (throttled to avoid spam)
-		npcData._lastDirectMovePrint = npcData._lastDirectMovePrint or 0
-		if tick() - npcData._lastDirectMovePrint > 2 then
-			print(string.format("[TD_CLIENT] NPC %s: Direct movement - Distance: %.2f studs, Destination: %s", npcData.ID, distance, tostring(targetPos)))
-			npcData._lastDirectMovePrint = tick()
-		end
-
 		-- Check if we've reached destination
 		-- Use extremely small threshold (0.01 studs) to reach exact position
 		if distance < 0.01 then
-			print(string.format("[TD_CLIENT] NPC %s: ✅ Reached destination! Clearing...", npcData.ID))
 			npcData.Destination = nil
 			npcData.MovementState = "Idle"
 			return
@@ -771,7 +763,7 @@ function ClientNPCSimulator.GetGroundPosition(position)
 	raycastParams.FilterDescendantsInstances = { workspace:FindFirstChild("Characters") or workspace }
 
 	local startPos = position
-	local rayResult = workspace:Raycast(startPos, Vector3.new(0, -20, 0), raycastParams)
+	local rayResult = workspace:Raycast(startPos + Vector3.new(0,1,0), Vector3.new(0, -100, 0), raycastParams)
 
 	if rayResult then
 		return rayResult.Position

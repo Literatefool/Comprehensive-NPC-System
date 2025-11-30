@@ -16,9 +16,6 @@ local OptimizationConfig = require(ReplicatedStorage.SharedSource.Datas.NPCs.Opt
 function NPC_Controller:KnitStart()
 	-- Check if UseClientPhysics system should be active
 	-- This runs after all components are initialized
-	if OptimizationConfig.UseClientPhysics then
-		print("[NPC_Controller] UseClientPhysics is enabled globally")
-	end
 
 	-- The ClientNPCManager will detect and handle client-physics NPCs
 	-- even if the global flag is false (per-NPC override)

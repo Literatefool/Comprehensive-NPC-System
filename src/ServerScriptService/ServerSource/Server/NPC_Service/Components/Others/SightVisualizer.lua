@@ -27,7 +27,6 @@ local npcIdCounter = 0 -- Counter for unique NPC IDs
 ]]
 function SightVisualizer:SetEnabled(enabled)
 	VISUALIZER_ENABLED = enabled
-	print("[SightVisualizer] Visualizer", enabled and "ENABLED" or "DISABLED")
 end
 
 --[[
@@ -385,8 +384,6 @@ end
 
 function SightVisualizer.Start()
 	-- Component start logic
-	print("[SightVisualizer] Initialized. Enabled:", VISUALIZER_ENABLED)
-	print("[SightVisualizer] Use SightVisualizer:SetEnabled(true/false) to toggle")
 end
 
 function SightVisualizer.Init()

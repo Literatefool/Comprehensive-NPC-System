@@ -111,7 +111,6 @@ function NPCAnimator.Setup(npc, visualModel, options)
 
 			if not loopStarted then
 				loopStarted = true
-				if isTracked then print("[NPCADBG] Animation loop STARTED, npcData:", npcDataRef.value ~= nil and "YES" or "NIL") end
 			end
 
 			local currentState
@@ -132,7 +131,6 @@ function NPCAnimator.Setup(npc, visualModel, options)
 						if fetchedData then
 							npcDataRef.value = fetchedData
 							currentNPCData = fetchedData
-							if isTracked then print("[NPCADBG] Retry SUCCESS - got npcData!") end
 						end
 					end
 				end
@@ -149,45 +147,12 @@ function NPCAnimator.Setup(npc, visualModel, options)
 					currentState = "Running" -- BetterAnimate handles idle/walk/run based on speed
 				end
 
-				-- Debug output (only for tracked NPC)
-				if isTracked then
-					debugFrameCounter = debugFrameCounter + 1
-					if debugFrameCounter >= DEBUG_INTERVAL then
-						debugFrameCounter = 0
-						local velocity = animator._CalculatedVelocity or Vector3.zero
-						local speed = animator._Speed or 0
-						local currentClass = animator._Class and animator._Class.Current or "?"
-						print(string.format(
-							"[NPCADBG] npcData=YES, Vel=%.1f, Speed=%.1f, State=%s, Class=%s",
-							velocity.Magnitude,
-							speed,
-							currentState,
-							currentClass
-						))
-					end
-				end
 			else
 				-- No npcData yet - use "Running" state (NOT humanoid state!)
 				-- This avoids PlatformStanding which stops all animations
 				-- BetterAnimate will determine Idle/Walk/Run from velocity
 				currentState = nextState or "Running"
 
-				-- Debug output for nil npcData case (only for tracked NPC)
-				if isTracked then
-					debugFrameCounter = debugFrameCounter + 1
-					if debugFrameCounter >= DEBUG_INTERVAL then
-						debugFrameCounter = 0
-						local velocity = animator._CalculatedVelocity or Vector3.zero
-						local speed = animator._Speed or 0
-						local currentClass = animator._Class and animator._Class.Current or "?"
-						print(string.format(
-							"[NPCADBG] npcData=NIL, using Running fallback, Vel=%.1f, Speed=%.1f, Class=%s",
-							velocity.Magnitude,
-							speed,
-							currentClass
-						))
-					end
-				end
 			end
 
 			-- Step animator
@@ -210,8 +175,6 @@ function NPCAnimator.Setup(npc, visualModel, options)
 		_NPCADBG_IsTracked = isTracked, -- For debug tracking
 	}
 
-	local modeStr = npcData and "UseClientPhysics" or "Traditional"
-	print("[NPCAnimator] Setup animator for:", npc.Name, "Rig:", rigType, "Mode:", modeStr, "IK:", enableIK, "Debug:", enableDebug)
 end
 
 --[[
@@ -225,21 +188,9 @@ end
 ]]
 function NPCAnimator.LinkNPCData(npc, npcData)
 	local instance = AnimatorInstances[npc]
-	local isTracked = instance and instance._NPCADBG_IsTracked
-	if isTracked then print("[NPCADBG] LinkNPCData: instance exists:", instance ~= nil) end
 	if instance then
 		-- Update the npcData reference - PositionProvider/OrientationProvider will use it automatically
 		instance.npcDataRef.value = npcData
-		if isTracked then print("[NPCADBG] LinkNPCData SUCCESS") end
-	else
-		-- Check if this NPC is tracked even without instance
-		local ClientNPCManager = script.Parent:FindFirstChild("ClientNPCManager")
-		if ClientNPCManager then
-			local manager = require(ClientNPCManager)
-			if manager.NPCADBG_TrackedNPC and npc.Name:find(manager.NPCADBG_TrackedNPC) then
-				print("[NPCADBG] LinkNPCData FAILED - no animator instance yet!")
-			end
-		end
 	end
 end
 
@@ -352,8 +303,6 @@ function NPCAnimator.Cleanup(npc)
 
 		-- Remove from tracking
 		AnimatorInstances[npc] = nil
-
-		print("[NPCAnimator] Cleaned up animator for:", npc.Name)
 	end
 end
 
@@ -415,8 +364,6 @@ end
 	@param options table? - Optional configuration for all NPCs {debug: boolean, inverseKinematics: boolean}
 ]]
 function NPCAnimator.InitializeStandalone(options)
-	print("[NPCAnimator] Initializing standalone animation system")
-
 	-- Watch for NPCs in workspace.Characters.NPCs
 	local charactersFolder = workspace:WaitForChild("Characters", 10)
 	if not charactersFolder then
@@ -463,8 +410,6 @@ function NPCAnimator.InitializeStandalone(options)
 			NPCAnimator.Cleanup(npc)
 		end
 	end)
-
-	print("[NPCAnimator] Watching for NPCs in workspace.Characters.NPCs")
 end
 
 function NPCAnimator.Start()

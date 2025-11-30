@@ -20,7 +20,6 @@ local RenderConfig
 function Set:SetCustomRenderCallback(callback)
 	if NPCRenderer then
 		NPCRenderer.CustomRenderCallback = callback
-		print("[NPC_Controller] Custom render callback set")
 	end
 end
 
