@@ -14,7 +14,7 @@ The easiest way to disable NPC collisions is by installing the official collisio
 
 #### Marketplace ID
 ```
-ba93b1f6-7e7a-42fe-8eb9-23e74224f4b5
+e7ea1460-7fc7-4aab-9095-6e303f23fac4
 ```
 
 #### Installation
