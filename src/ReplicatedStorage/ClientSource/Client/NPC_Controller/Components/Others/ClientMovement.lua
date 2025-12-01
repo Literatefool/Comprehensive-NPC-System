@@ -25,6 +25,11 @@ local STRAFE_CHANCE = 0.3 -- 30% chance to strafe during combat
 local STRAFE_DURATION = 1.5 -- How long to strafe (seconds)
 local STRAFE_DISTANCE = 5 -- How far to strafe
 
+-- FLEE MODE (defaults - can be overridden per NPC via Config)
+local DEFAULT_FLEE_DISTANCE_FACTOR = 1.5 -- Flee to 150% of sight range
+local DEFAULT_FLEE_SPEED_MULTIPLIER = 1.3 -- Speed boost when fleeing
+local DEFAULT_FLEE_SAFE_DISTANCE_FACTOR = 1.2 -- Consider safe at 120% of sight range
+
 --[[
 	Calculate combat position based on movement mode
 
@@ -35,6 +40,11 @@ local STRAFE_DISTANCE = 5 -- How far to strafe
 function ClientMovement.CalculateCombatPosition(npcData, targetPosition)
 	local currentPos = npcData.Position
 	local config = npcData.Config
+
+	-- Handle FleeMode separately
+	if config.MovementMode == "Flee" then
+		return ClientMovement.CalculateFleePosition(npcData, targetPosition)
+	end
 
 	local direction = targetPosition - currentPos
 	direction = Vector3.new(direction.X, 0, direction.Z)
@@ -93,6 +103,37 @@ function ClientMovement.CalculateStrafePosition(npcData, targetPosition)
 	end
 
 	return currentPos + perpendicular * STRAFE_DISTANCE
+end
+
+--[[
+	Calculate flee position away from target
+
+	@param npcData table - NPC data
+	@param targetPosition Vector3 - Position to flee from
+	@return Vector3 - Flee destination
+]]
+function ClientMovement.CalculateFleePosition(npcData, targetPosition)
+	local currentPos = npcData.Position
+	local config = npcData.Config
+
+	-- Calculate direction AWAY from target
+	local awayDirection = currentPos - targetPosition
+	awayDirection = Vector3.new(awayDirection.X, 0, awayDirection.Z)
+
+	if awayDirection.Magnitude < 0.1 then
+		-- Target on top of us, pick random direction
+		local randomAngle = math.random() * math.pi * 2
+		awayDirection = Vector3.new(math.cos(randomAngle), 0, math.sin(randomAngle))
+	else
+		awayDirection = awayDirection.Unit
+	end
+
+	-- Calculate flee distance (use config value or default)
+	local sightRange = config.SightRange or 200
+	local fleeDistanceFactor = config.FleeDistanceFactor or DEFAULT_FLEE_DISTANCE_FACTOR
+	local fleeDistance = sightRange * fleeDistanceFactor
+
+	return currentPos + awayDirection * fleeDistance
 end
 
 --[[
@@ -173,7 +214,19 @@ function ClientMovement.DetermineMovementState(npcData)
 			local distance = (npcData.Position - targetPart.Position).Magnitude
 			local config = npcData.Config
 
-			if config.MovementMode == "Melee" then
+			-- Handle FleeMode
+			if config.MovementMode == "Flee" then
+				local sightRange = config.SightRange or 200
+				local safeDistanceFactor = config.FleeSafeDistanceFactor or DEFAULT_FLEE_SAFE_DISTANCE_FACTOR
+				local safeDistance = sightRange * safeDistanceFactor
+
+				if distance >= safeDistance then
+					-- Safe, can stop fleeing
+					return "Idle"
+				else
+					return "Fleeing"
+				end
+			elseif config.MovementMode == "Melee" then
 				local meleeRange = config.MeleeOffsetRange or MELEE_MAX_DISTANCE
 				if distance <= meleeRange then
 					return "CombatMelee"
@@ -212,7 +265,10 @@ end
 function ClientMovement.GetSpeedModifier(npcData)
 	local state = npcData.MovementState or "Idle"
 
-	if state == "CombatRetreating" then
+	if state == "Fleeing" then
+		-- Use config value or default
+		return npcData.Config.FleeSpeedMultiplier or DEFAULT_FLEE_SPEED_MULTIPLIER
+	elseif state == "CombatRetreating" then
 		return 1.2 -- Move faster when retreating
 	elseif state == "CombatApproaching" then
 		return 1.0 -- Normal speed when approaching
@@ -288,6 +344,11 @@ function ClientMovement.ShouldPursueTarget(npcData)
 		return false
 	end
 
+	-- FleeMode doesn't pursue, it flees
+	if npcData.Config.MovementMode == "Flee" then
+		return false
+	end
+
 	if not npcData.Config.EnableCombatMovement then
 		return false
 	end
@@ -304,6 +365,41 @@ function ClientMovement.ShouldPursueTarget(npcData)
 
 	-- Pursue if within sight range
 	return distance <= sightRange * 1.2 -- 20% buffer
+end
+
+--[[
+	Check if NPC should flee from target
+
+	@param npcData table - NPC data
+	@return boolean
+]]
+function ClientMovement.ShouldFleeFromTarget(npcData)
+	if not npcData.CurrentTarget then
+		return false
+	end
+
+	if npcData.Config.MovementMode ~= "Flee" then
+		return false
+	end
+
+	if not npcData.Config.EnableCombatMovement then
+		return false
+	end
+
+	local targetPart = npcData.CurrentTarget:FindFirstChild("HumanoidRootPart")
+		or npcData.CurrentTarget.PrimaryPart
+
+	if not targetPart then
+		return false
+	end
+
+	local distance = (npcData.Position - targetPart.Position).Magnitude
+	local sightRange = npcData.Config.SightRange or 200
+	local safeDistanceFactor = npcData.Config.FleeSafeDistanceFactor or DEFAULT_FLEE_SAFE_DISTANCE_FACTOR
+	local safeDistance = sightRange * safeDistanceFactor
+
+	-- Flee if within sight range but not yet at safe distance
+	return distance < safeDistance
 end
 
 function ClientMovement.Start()

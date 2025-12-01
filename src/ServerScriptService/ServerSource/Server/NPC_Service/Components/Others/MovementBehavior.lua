@@ -25,6 +25,14 @@ local MELEE_OFFSET_MIN_BASE = 2.5 -- Minimum offset regardless of size
 local MELEE_CHASE_CHECK_INTERVAL = 0.3
 local MELEE_RECALCULATE_INTERVAL = 1.5
 
+-- FLEE MODE (Cowardly/Civilian NPCs)
+local FLEE_DISTANCE_MIN = 30 -- Minimum distance to flee from target
+local FLEE_DISTANCE_MAX = 60 -- Maximum flee distance
+local FLEE_SPEED_MULTIPLIER = 1.3 -- Speed boost when fleeing (1.3 = 30% faster)
+local FLEE_RECALCULATE_INTERVAL = 0.5 -- How often to recalculate flee point
+local FLEE_SAFE_DISTANCE = 80 -- Distance at which NPC considers itself "safe"
+local FLEE_NOTICE_DURATION = 0.4 -- How long NPC looks at target before fleeing
+
 -- SHARED
 local UNFOLLOW_SIGHT_DURATION = 2.5
 local NO_TARGET_CHECK_INTERVAL = 1 -- How often to check when no target exists
@@ -206,9 +214,59 @@ local function calculateMeleeOffset(npcData)
 end
 
 --[[
+	Find a point away from the target to flee to
+
+	@param npcData table - NPC data
+	@param targetPosition Vector3 - Position to flee from
+	@return Vector3? - Flee destination
+]]
+local function findFleePoint(npcData, targetPosition)
+	local npcPos = npcData.Model.PrimaryPart.Position
+
+	-- Calculate direction AWAY from target
+	local awayDirection = (npcPos - targetPosition).Unit
+
+	-- Calculate flee distance
+	local fleeDistance = math.random(FLEE_DISTANCE_MIN, FLEE_DISTANCE_MAX)
+	local fleePoint = npcPos + (awayDirection * fleeDistance)
+
+	-- Validate with raycast (check for obstacles)
+	local raycastParams = RaycastParams.new()
+	raycastParams.FilterType = Enum.RaycastFilterType.Exclude
+	raycastParams.FilterDescendantsInstances = {
+		npcData.Model,
+		workspace:FindFirstChild("Characters"),
+		workspace:FindFirstChild("VisualWaypoints"),
+		workspace:FindFirstChild("ClientSightVisualization"),
+	}
+
+	-- Check if flee point has ground
+	local groundRay = workspace:Raycast(fleePoint + Vector3.new(0, 10, 0), Vector3.new(0, -100, 0), raycastParams)
+
+	if groundRay and groundRay.Instance.CanCollide then
+		return groundRay.Position
+	end
+
+	-- Try alternative angles if direct path blocked
+	for angle = 45, 135, 45 do
+		local rotatedDirection = CFrame.Angles(0, math.rad(angle), 0) * awayDirection
+		local altFleePoint = npcPos + (rotatedDirection * fleeDistance)
+
+		local altGroundRay =
+			workspace:Raycast(altFleePoint + Vector3.new(0, 10, 0), Vector3.new(0, -100, 0), raycastParams)
+
+		if altGroundRay and altGroundRay.Instance.CanCollide then
+			return altGroundRay.Position
+		end
+	end
+
+	return nil
+end
+
+--[[
 	Idle wandering behavior thread
 	Random movement around spawn point
-	
+
 	@param npcData table - NPC data
 ]]
 local function idleWanderThread(npcData)
@@ -328,6 +386,57 @@ local function combatMovementThread(npcData)
 					end
 
 					task.wait(MELEE_CHASE_CHECK_INTERVAL)
+				elseif npcData.MovementMode == "Flee" then
+					-- FLEE MODE: Run away from target
+					local fleeSpeedMultiplier = npcData.FleeSpeedMultiplier or FLEE_SPEED_MULTIPLIER
+					local fleeSafeDistance = npcData.FleeSafeDistance or FLEE_SAFE_DISTANCE
+					local fleeNoticeDuration = npcData.FleeNoticeDuration or FLEE_NOTICE_DURATION
+
+					-- Check if we're already at safe distance
+					if distance >= fleeSafeDistance then
+						-- Safe! Stop fleeing, clear target
+						npcData.CurrentTarget = nil
+						npcData.Destination = nil
+						npcData.MovementState = nil
+						npcData.FleeNoticeStartTime = nil -- Reset notice timer
+
+						-- Restore normal speed
+						if humanoid then
+							humanoid.WalkSpeed = originalWalkSpeed
+						end
+					else
+						-- Track when we first noticed the target
+						if not npcData.FleeNoticeStartTime then
+							npcData.FleeNoticeStartTime = tick()
+							npcData.MovementState = "FleeNoticing" -- Looking at target
+						end
+
+						local timeSinceNotice = tick() - npcData.FleeNoticeStartTime
+
+						-- Only start fleeing after notice period
+						if timeSinceNotice >= fleeNoticeDuration then
+							-- Still in danger, keep fleeing
+							local fleePoint = findFleePoint(npcData, targetPos)
+
+							if fleePoint then
+								npcData.Destination = fleePoint
+								npcData.MovementState = "Fleeing"
+
+								-- Apply flee speed boost
+								if humanoid then
+									humanoid.WalkSpeed = originalWalkSpeed * fleeSpeedMultiplier
+								end
+
+								if npcData.UsePathfinding and NPC_Service.Components.PathfindingManager then
+									NPC_Service.Components.PathfindingManager.RunPath(npcData, fleePoint)
+								elseif humanoid then
+									humanoid:MoveTo(fleePoint)
+								end
+							end
+						end
+					end
+
+					task.wait(FLEE_RECALCULATE_INTERVAL)
 				end
 			else
 				-- No target, check if we should unfollow
@@ -380,8 +489,14 @@ local function orientationUpdateThread(npcData)
 			local npcPos = hrp.Position
 			local targetPos = nil
 
-			if npcData.CurrentTarget and npcData.CurrentTarget.PrimaryPart then
-				-- Face target
+			-- FleeMode orientation: face target during notice, face destination while fleeing
+			if npcData.MovementMode == "Flee" and npcData.MovementState == "Fleeing" then
+				-- While fleeing, face the flee direction (destination)
+				if npcData.Destination then
+					targetPos = npcData.Destination
+				end
+			elseif npcData.CurrentTarget and npcData.CurrentTarget.PrimaryPart then
+				-- Face target (includes FleeNoticing state)
 				targetPos = npcData.CurrentTarget.PrimaryPart.Position
 			elseif npcData.Destination then
 				-- Face destination when no target

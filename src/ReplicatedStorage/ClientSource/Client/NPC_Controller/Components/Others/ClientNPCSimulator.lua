@@ -417,6 +417,16 @@ function ClientNPCSimulator.SimulateCombatMovement(npcData, deltaTime)
 	-- Store last known position for when we lose sight
 	npcData.LastKnownTargetPos = targetPos
 
+	local direction = targetPos - currentPos
+	direction = Vector3.new(direction.X, 0, direction.Z)
+	local distance = direction.Magnitude
+
+	-- Handle FleeMode separately
+	if npcData.Config.MovementMode == "Flee" then
+		ClientNPCSimulator.SimulateFleeMovement(npcData, deltaTime, targetPos, currentPos, distance)
+		return
+	end
+
 	-- Calculate desired distance based on movement mode
 	local desiredDistance = 0
 	if npcData.Config.MovementMode == "Melee" then
@@ -425,10 +435,6 @@ function ClientNPCSimulator.SimulateCombatMovement(npcData, deltaTime)
 		-- Ranged: stay at sight range edge
 		desiredDistance = (npcData.Config.SightRange or 200) * 0.7
 	end
-
-	local direction = targetPos - currentPos
-	direction = Vector3.new(direction.X, 0, direction.Z)
-	local distance = direction.Magnitude
 
 	-- If within desired distance, stop pathfinding
 	if distance <= desiredDistance then
@@ -544,6 +550,160 @@ function ClientNPCSimulator.SimulateCombatMovement(npcData, deltaTime)
 
 		npcData.Position = newPosition
 		npcData.MovementState = "CombatMoving"
+	end
+end
+
+--[[
+	Simulate flee movement away from target
+	FleeMode NPCs run away from detected targets instead of approaching
+]]
+function ClientNPCSimulator.SimulateFleeMovement(npcData, deltaTime, targetPos, currentPos, distance)
+	local sightRange = npcData.Config.SightRange or 200
+	local safeDistanceFactor = npcData.Config.FleeSafeDistanceFactor or 1.2
+	local safeDistance = sightRange * safeDistanceFactor
+	local fleeSpeedMultiplier = npcData.Config.FleeSpeedMultiplier or 1.3
+	local fleeDistanceFactor = npcData.Config.FleeDistanceFactor or 1.5
+	local fleeNoticeDuration = npcData.Config.FleeNoticeDuration or 0.4
+
+	-- If we're at safe distance, clear target and stop fleeing
+	if distance >= safeDistance then
+		npcData.CurrentTarget = nil
+		npcData.Destination = nil
+		npcData.MovementState = "Idle"
+		npcData.FleeNoticeStartTime = nil -- Reset notice timer
+
+		-- Stop pathfinding if active
+		if ClientPathfinding then
+			ClientPathfinding.StopPath(npcData)
+		end
+		return
+	end
+
+	-- Track when we first noticed the target
+	if not npcData.FleeNoticeStartTime then
+		npcData.FleeNoticeStartTime = tick()
+		npcData.MovementState = "FleeNoticing"
+
+		-- Face target during notice period
+		local toTarget = targetPos - currentPos
+		toTarget = Vector3.new(toTarget.X, 0, toTarget.Z)
+		if toTarget.Magnitude > 0.1 then
+			npcData.Orientation = CFrame.lookAt(currentPos, currentPos + toTarget.Unit)
+		end
+		return
+	end
+
+	local timeSinceNotice = tick() - npcData.FleeNoticeStartTime
+
+	-- During notice period, just look at target (don't move yet)
+	if timeSinceNotice < fleeNoticeDuration then
+		npcData.MovementState = "FleeNoticing"
+
+		-- Face target during notice period
+		local toTarget = targetPos - currentPos
+		toTarget = Vector3.new(toTarget.X, 0, toTarget.Z)
+		if toTarget.Magnitude > 0.1 then
+			npcData.Orientation = CFrame.lookAt(currentPos, currentPos + toTarget.Unit)
+		end
+		return
+	end
+
+	-- Calculate flee direction (AWAY from target)
+	local awayDirection = currentPos - targetPos
+	awayDirection = Vector3.new(awayDirection.X, 0, awayDirection.Z)
+
+	if awayDirection.Magnitude < 0.1 then
+		-- Target on top of us, pick random direction
+		local randomAngle = math.random() * math.pi * 2
+		awayDirection = Vector3.new(math.cos(randomAngle), 0, math.sin(randomAngle))
+	else
+		awayDirection = awayDirection.Unit
+	end
+
+	-- Calculate flee destination
+	local fleeDistance = sightRange * fleeDistanceFactor
+	local fleeDestination = currentPos + awayDirection * fleeDistance
+
+	-- Use pathfinding for flee movement if available
+	if ClientPathfinding and npcData.VisualModel and npcData.Pathfinding then
+		-- Recompute path if needed
+		local shouldRecompute = npcData.Pathfinding.Idle
+		if npcData.LastFleeTargetPos then
+			local targetMoved = (npcData.LastFleeTargetPos - targetPos).Magnitude
+			shouldRecompute = shouldRecompute or targetMoved > 5
+		end
+
+		if shouldRecompute then
+			local now = tick()
+			local lastRunTime = npcData._lastFleePathRunTime or 0
+			local timeSinceLastRun = now - lastRunTime
+
+			if timeSinceLastRun > 0.5 then
+				ClientPathfinding.RunPath(npcData, npcData.VisualModel, fleeDestination)
+				npcData.LastFleeTargetPos = targetPos
+				npcData._lastFleePathRunTime = now
+			end
+		end
+
+		-- Get current waypoint from NoobPath
+		local waypoint = npcData.Pathfinding:GetWaypoint()
+		if waypoint then
+			local waypointPos = waypoint.Position
+
+			-- Calculate distance ignoring Y axis (only XZ plane)
+			local waypointPosFlat = Vector3.new(waypointPos.X, currentPos.Y, waypointPos.Z)
+			local distanceToWaypoint = (currentPos - waypointPosFlat).Magnitude
+
+			-- If close enough to current waypoint, advance to next
+			if distanceToWaypoint < 2 then
+				local advanced = npcData.Pathfinding:AdvanceWaypoint()
+				if advanced then
+					waypoint = npcData.Pathfinding:GetWaypoint()
+					if waypoint then
+						waypointPos = waypoint.Position
+					end
+				end
+			end
+
+			-- Move toward current waypoint with flee speed boost
+			local waypointDirection = waypointPos - currentPos
+			waypointDirection = Vector3.new(waypointDirection.X, 0, waypointDirection.Z)
+
+			if waypointDirection.Magnitude > 0.1 then
+				waypointDirection = waypointDirection.Unit
+				local walkSpeed = (npcData.Config.WalkSpeed or 16) * fleeSpeedMultiplier
+				local movement = waypointDirection * walkSpeed * deltaTime
+
+				-- Face flee direction (away from target)
+				npcData.Orientation = CFrame.lookAt(currentPos, currentPos + awayDirection)
+
+				-- Apply movement
+				local newPosition = currentPos + movement
+				newPosition = ClientNPCSimulator.SnapToGroundForNPC(npcData, newPosition)
+
+				npcData.Position = newPosition
+			end
+
+			-- Check if waypoint requires jump
+			if waypoint.Action == Enum.PathWaypointAction.Jump and not npcData.IsJumping then
+				ClientNPCSimulator.TriggerJump(npcData)
+			end
+		end
+
+		npcData.MovementState = "Fleeing"
+	else
+		-- Fallback: direct movement (no collision avoidance)
+		local walkSpeed = (npcData.Config.WalkSpeed or 16) * fleeSpeedMultiplier
+		local movement = awayDirection * walkSpeed * deltaTime
+
+		-- Face flee direction
+		npcData.Orientation = CFrame.lookAt(currentPos, currentPos + awayDirection)
+
+		local newPosition = currentPos + movement
+		newPosition = ClientNPCSimulator.SnapToGroundForNPC(npcData, newPosition)
+
+		npcData.Position = newPosition
+		npcData.MovementState = "Fleeing"
 	end
 end
 

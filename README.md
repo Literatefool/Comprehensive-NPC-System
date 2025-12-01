@@ -89,7 +89,7 @@ A production-ready, highly flexible NPC system built on **SuperbulletFrameworkV1
 - **SightRange**: Configurable detection range in studs
 - **SightMode**: Choose between Omnidirectional or Directional detection
 - **CanWalk**: Enable/disable all movement
-- **MovementMode**: Ranged or Melee behaviors
+- **MovementMode**: Ranged, Melee, or Flee behaviors
 - **UsePathfinding**: Toggle advanced pathfinding vs simple MoveTo()
 - **EnableIdleWander**: Random wandering when no target
 - **EnableCombatMovement**: Dynamic movement during combat
@@ -212,8 +212,12 @@ NPC_Service:SpawnNPC({
 
     -- Movement
     CanWalk: boolean?,         -- Enable/disable all movement (default: true)
-    MovementMode: string?,     -- "Ranged" or "Melee" (default: "Ranged")
+    MovementMode: string?,     -- "Ranged", "Melee", or "Flee" (default: "Ranged")
     MeleeOffsetRange: number?, -- For Melee mode: offset distance in studs (default: 3-8)
+    FleeSpeedMultiplier: number?,     -- For Flee mode: speed multiplier when fleeing (default: 1.3)
+    FleeSafeDistanceFactor: number?,  -- For Flee mode: safe distance as factor of SightRange (default: 1.2)
+    FleeDistanceFactor: number?,      -- For Flee mode: flee distance as factor of SightRange (default: 1.5)
+    FleeNoticeDuration: number?,      -- For Flee mode: seconds to look at target before fleeing (default: 0.4)
     UsePathfinding: boolean?,  -- Use advanced pathfinding vs simple MoveTo() (default: true)
     EnableIdleWander: boolean?,     -- Enable random wandering (default: true)
     EnableCombatMovement: boolean?, -- Enable combat movement (default: true)
@@ -268,6 +272,17 @@ NPC_Service:SpawnNPC({
 - Uses `MeleeOffsetRange` for offset distance (3-8 studs)
 - Suitable for sword/melee combat NPCs
 - Closes distance aggressively
+
+#### Flee Mode
+
+- Runs away from detected targets
+- Brief "notice" period: NPC looks at target before fleeing (default: 0.4s)
+- Uses `FleeSpeedMultiplier` for speed boost (default: 1.3x)
+- Uses `FleeSafeDistanceFactor` to determine when to stop fleeing (default: 1.2x SightRange)
+- Uses `FleeDistanceFactor` to determine how far to flee (default: 1.5x SightRange)
+- Faces flee direction while running (not the target)
+- Suitable for civilian NPCs, prey animals, cowardly enemies
+- Returns to idle wandering when safe
 
 ---
 
@@ -328,7 +343,41 @@ local meleeNPC = NPC_Service:SpawnNPC({
 })
 ```
 
-### Example 3: Stationary Guard NPC (towers for your tower defense game)
+### Example 3: Flee Mode Civilian (runs away from threats)
+
+```lua
+local civilian = NPC_Service:SpawnNPC({
+    Name = "Civilian_1",
+    Position = Vector3.new(30, 10, 0),
+    ModelPath = ReplicatedStorage.Assets.NPCs.Characters.Civilian,
+
+    MaxHealth = 50,
+    WalkSpeed = 14,
+
+    SightRange = 40,
+    SightMode = "Omnidirectional",
+    MovementMode = "Flee",
+
+    -- Flee-specific configuration
+    FleeSpeedMultiplier = 1.5,       -- 50% faster when fleeing
+    FleeSafeDistanceFactor = 1.5,    -- Stop fleeing at 1.5x SightRange (60 studs)
+    FleeDistanceFactor = 2.0,        -- Flee to 2x SightRange (80 studs)
+
+    EnableIdleWander = true,
+    EnableCombatMovement = true,
+
+    ClientRenderData = {
+        CustomColor = Color3.fromRGB(255, 200, 100),  -- Yellow/gold
+    },
+
+    CustomData = {
+        Faction = "Civilian",
+        NPCType = "Fleeing",
+    },
+})
+```
+
+### Example 4: Stationary Guard NPC (towers for your tower defense game)
 
 ```lua
 local guard = NPC_Service:SpawnNPC({
@@ -354,7 +403,7 @@ local guard = NPC_Service:SpawnNPC({
 })
 ```
 
-### Example 4: Tower Defense Enemy Wave
+### Example 5: Tower Defense Enemy Wave
 
 ```lua
 -- Spawn enemies that follow waypoints
