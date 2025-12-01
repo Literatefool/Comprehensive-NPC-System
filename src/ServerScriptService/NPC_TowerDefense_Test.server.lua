@@ -210,11 +210,14 @@ local function moveEnemyThroughWaypoints(enemy, enemyId)
 				while isNPCValid() and currentWaypointIndex <= #walkpoints do
 					local npcPos = getNPCPosition()
 					if npcPos then
-						local distance = (Vector3.new(npcPos.X, 0, npcPos.Z) - Vector3.new(waypointPos.X, 0, waypointPos.Z)).Magnitude
+						local distance = (Vector3.new(npcPos.X, 0, npcPos.Z) - Vector3.new(
+							waypointPos.X,
+							0,
+							waypointPos.Z
+						)).Magnitude
 
 						if distance < REACH_DISTANCE then
 							-- Reached waypoint
-							print(string.format("[TD] Enemy %s reached waypoint %d", tostring(enemy), currentWaypointIndex))
 							currentWaypointIndex = currentWaypointIndex + 1
 							task.wait() -- Small pause between waypoints
 							moveToNextWaypoint()
@@ -224,7 +227,9 @@ local function moveEnemyThroughWaypoints(enemy, enemyId)
 
 					-- Timeout check
 					if tick() - startTime > MAX_TIME then
-						print(string.format("[TD] Enemy %s timeout at waypoint %d", tostring(enemy), currentWaypointIndex))
+						print(
+							string.format("[TD] Enemy %s timeout at waypoint %d", tostring(enemy), currentWaypointIndex)
+						)
 						currentWaypointIndex = currentWaypointIndex + 1
 						moveToNextWaypoint()
 						return

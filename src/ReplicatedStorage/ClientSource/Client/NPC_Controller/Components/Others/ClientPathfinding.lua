@@ -274,9 +274,13 @@ function ClientPathfinding.Cleanup(npcData)
 	end
 
 	-- Clear pathfinding instance
+	-- IMPORTANT: Use Destroy() not Dump() - Destroy() disconnects MoveFinishedC/JumpFinishedC
+	-- before clearing the object. Dump() leaves those connections active, causing
+	-- "attempt to call missing method" errors when Humanoid.MoveToFinished fires
+	-- after the NoobPath metatable has been removed.
 	if npcData.Pathfinding then
 		pcall(function()
-			npcData.Pathfinding:Dump()
+			npcData.Pathfinding:Destroy()
 		end)
 		npcData.Pathfinding = nil
 	end
