@@ -345,9 +345,9 @@ function ClientNPCManager.StartSimulation(npcFolder)
 			npcData.VisualModel = visualModel
 
 			-- Link to NPCAnimator for animation state sync
-			local NPCAnimator = script.Parent:FindFirstChild("NPCAnimator")
-			if NPCAnimator then
-				local animator = require(NPCAnimator)
+			local NPCAnimatorModule = script.Parent.Parent.Rendering:FindFirstChild("NPCAnimator")
+			if NPCAnimatorModule then
+				local animator = require(NPCAnimatorModule)
 				animator.LinkNPCData(visualModel, npcData)
 			end
 		end
@@ -721,18 +721,20 @@ function ClientNPCManager.Init()
 		NPC_Service = Knit.GetService("NPC_Service")
 
 		-- Load other components (they may not exist yet)
-		local componentsFolder = script.Parent
-		local simulatorModule = componentsFolder:FindFirstChild("ClientNPCSimulator")
+		-- script.Parent = NPC/, script.Parent.Parent = Others/
+		local othersFolder = script.Parent.Parent
+
+		local simulatorModule = othersFolder.NPC:FindFirstChild("ClientNPCSimulator")
 		if simulatorModule then
 			ClientNPCSimulator = require(simulatorModule)
 		end
 
-		local rendererModule = componentsFolder:FindFirstChild("ClientPhysicsRenderer")
+		local rendererModule = othersFolder.Rendering:FindFirstChild("ClientPhysicsRenderer")
 		if rendererModule then
 			ClientPhysicsRenderer = require(rendererModule)
 		end
 
-		local sightDetectorModule = componentsFolder:FindFirstChild("ClientSightDetector")
+		local sightDetectorModule = othersFolder.Sight:FindFirstChild("ClientSightDetector")
 		if sightDetectorModule then
 			ClientSightDetector = require(sightDetectorModule)
 		end

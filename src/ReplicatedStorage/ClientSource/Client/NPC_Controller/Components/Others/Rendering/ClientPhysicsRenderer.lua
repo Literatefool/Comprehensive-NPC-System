@@ -333,7 +333,7 @@ function ClientPhysicsRenderer.RenderNPC(npcID)
 				local targetPosition = positionValue.Value
 				local targetRotation = orientationValue and orientationValue.Value.Rotation or CFrame.identity
 
-				local ClientNPCManagerModule = script.Parent:FindFirstChild("ClientNPCManager")
+				local ClientNPCManagerModule = script.Parent.Parent.NPC:FindFirstChild("ClientNPCManager")
 				if ClientNPCManagerModule then
 					local manager = require(ClientNPCManagerModule)
 					local npcData = manager.GetSimulatedNPC(npcID)
@@ -375,7 +375,7 @@ function ClientPhysicsRenderer.RenderNPC(npcID)
 				task.wait(0.5) -- Wait for model to settle
 
 				-- Get npcData from ClientNPCManager for UseClientPhysics support
-				local ClientNPCManagerModule = script.Parent:FindFirstChild("ClientNPCManager")
+				local ClientNPCManagerModule = script.Parent.Parent.NPC:FindFirstChild("ClientNPCManager")
 				local npcData = nil
 				if ClientNPCManagerModule then
 					local manager = require(ClientNPCManagerModule)
@@ -399,9 +399,9 @@ function ClientPhysicsRenderer.RenderNPC(npcID)
 	}
 
 	-- Link to ClientNPCManager's simulated NPC data
-	local ClientNPCManager = script.Parent:FindFirstChild("ClientNPCManager")
-	if ClientNPCManager then
-		local manager = require(ClientNPCManager)
+	local ClientNPCManagerModule = script.Parent.Parent.NPC:FindFirstChild("ClientNPCManager")
+	if ClientNPCManagerModule then
+		local manager = require(ClientNPCManagerModule)
 		local npcData = manager.GetSimulatedNPC(npcID)
 		if npcData then
 			npcData.VisualModel = visualModel

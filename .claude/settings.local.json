@@ -4,7 +4,8 @@
       "mcp__zilliz-code-context__search_code",
       "Bash(cat:*)",
       "Bash(xxd:*)",
-      "Bash(python:*)"
+      "Bash(python:*)",
+      "mcp__code-context__search_code"
     ],
     "deny": [],
     "ask": []

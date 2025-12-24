@@ -1006,20 +1006,21 @@ function ClientNPCSimulator.Init()
 	OptimizationConfig = require(ReplicatedStorage.SharedSource.Datas.NPCs.OptimizationConfig)
 
 	-- Load other components (they may not exist yet)
-	local componentsFolder = script.Parent
+	-- script.Parent = NPC/, script.Parent.Parent = Others/
+	local othersFolder = script.Parent.Parent
 
 	task.spawn(function()
-		local pathfindingModule = componentsFolder:FindFirstChild("ClientPathfinding")
+		local pathfindingModule = othersFolder.Movement:FindFirstChild("ClientPathfinding")
 		if pathfindingModule then
 			ClientPathfinding = require(pathfindingModule)
 		end
 
-		local jumpModule = componentsFolder:FindFirstChild("ClientJumpSimulator")
+		local jumpModule = othersFolder.Movement:FindFirstChild("ClientJumpSimulator")
 		if jumpModule then
 			ClientJumpSimulator = require(jumpModule)
 		end
 
-		local movementModule = componentsFolder:FindFirstChild("ClientMovement")
+		local movementModule = othersFolder.Movement:FindFirstChild("ClientMovement")
 		if movementModule then
 			ClientMovement = require(movementModule)
 		end

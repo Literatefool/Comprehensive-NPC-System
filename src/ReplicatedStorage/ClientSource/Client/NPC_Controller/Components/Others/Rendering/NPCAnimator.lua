@@ -122,7 +122,7 @@ function NPCAnimator.Setup(npc, visualModel, options)
 				if npcDataRetryTimer >= NPCDATA_RETRY_INTERVAL then
 					npcDataRetryTimer = 0
 					-- Try to get npcData from ClientNPCManager
-					local ClientNPCManagerModule = script.Parent:FindFirstChild("ClientNPCManager")
+					local ClientNPCManagerModule = script.Parent.Parent.NPC:FindFirstChild("ClientNPCManager")
 					if ClientNPCManagerModule then
 						local manager = require(ClientNPCManagerModule)
 						-- Extract npcID from visual model name (format: "npcID_Visual")
