@@ -59,7 +59,7 @@ function Get.Start()
 end
 
 function Get.Init()
-	NPCRenderer = require(script.Parent.Others.NPCRenderer)
+	NPCRenderer = require(script.Parent.Others.Rendering.NPCRenderer)
 end
 
 return Get
