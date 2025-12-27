@@ -14,16 +14,25 @@ The NPC System is a modular, client-server architecture that manages NPC spawnin
 
 #### Core Components
 
-- **NPCSpawner** - Spawns NPCs with server-side physics (traditional mode)
-- **ClientPhysicsSpawner** - Spawns NPCs with client-side physics (optimized mode)
-- **MovementBehavior** - Handles NPC movement logic (ranged, melee, idle wandering)
-- **PathfindingManager** - Manages pathfinding using NoobPath library
-- **SightDetector** - Detects targets (omnidirectional or directional vision)
-- **SightVisualizer** - Visual debugging for sight ranges and cones
-- **ClientPhysicsSync** - Syncs client-side NPC data to server
-- **ServerFallbackSimulator** - Server-side simulation fallback for client physics NPCs
-- **Get()** - Read NPC data
-- **Set()** - Modify NPC data
+**Spawning** (`Components/Others/Spawning/`)
+- **NPCSpawner.lua** - Spawns NPCs with server-side physics (traditional mode)
+
+**Physics** (`Components/Others/Physics/`)
+- **ClientPhysicsSpawner.lua** - Spawns NPCs with client-side physics (optimized mode)
+- **ClientPhysicsSync.lua** - Syncs client-side NPC data to server
+- **ServerFallbackSimulator.lua** - Server-side simulation fallback for client physics NPCs
+
+**Movement** (`Components/Others/Movement/`)
+- **MovementBehavior.lua** - Handles NPC movement logic (ranged, melee, idle wandering)
+- **PathfindingManager.lua** - Manages pathfinding using NoobPath library
+
+**Sight** (`Components/Others/Sight/`)
+- **SightDetector.lua** - Detects targets (omnidirectional or directional vision)
+- **SightVisualizer.lua** - Visual debugging for sight ranges and cones
+
+**Data Access** (`Components/`)
+- **Get().lua** - Read NPC data
+- **Set().lua** - Modify NPC data
 
 ---
 
@@ -33,18 +42,27 @@ The NPC System is a modular, client-server architecture that manages NPC spawnin
 
 #### Core Components
 
-- **NPCRenderer** - Renders NPC visual models on client (traditional mode)
-- **NPCAnimator** - Handles NPC animations using BetterAnimate
-- **ClientPhysicsRenderer** - Renders and simulates client physics NPCs
-- **ClientNPCManager** - Manages client-side NPC instances
-- **ClientNPCSimulator** - Main client-side physics simulation loop
-- **ClientMovement** - Client-side movement behavior
-- **ClientPathfinding** - Client-side pathfinding using NoobPath
-- **ClientSightDetector** - Client-side target detection
-- **ClientSightVisualizer** - Client-side sight debugging visuals
-- **ClientJumpSimulator** - Handles client-side NPC jumping
-- **Get()** - Read client NPC data
-- **Set()** - Modify client NPC data
+**Rendering** (`Components/Others/Rendering/`)
+- **NPCRenderer.lua** - Renders NPC visual models on client (traditional mode)
+- **NPCAnimator.lua** - Handles NPC animations using BetterAnimate
+- **ClientPhysicsRenderer.lua** - Renders and simulates client physics NPCs
+
+**NPC Management** (`Components/Others/NPC/`)
+- **ClientNPCManager.lua** - Manages client-side NPC instances
+- **ClientNPCSimulator.lua** - Main client-side physics simulation loop
+
+**Movement** (`Components/Others/Movement/`)
+- **ClientMovement.lua** - Client-side movement behavior
+- **ClientPathfinding.lua** - Client-side pathfinding using NoobPath
+- **ClientJumpSimulator.lua** - Handles client-side NPC jumping
+
+**Sight** (`Components/Others/Sight/`)
+- **ClientSightDetector.lua** - Client-side target detection
+- **ClientSightVisualizer.lua** - Client-side sight debugging visuals
+
+**Data Access** (`Components/`)
+- **Get().lua** - Read client NPC data
+- **Set().lua** - Modify client NPC data
 
 ---
 
@@ -90,33 +108,45 @@ The NPC System is a modular, client-server architecture that manages NPC spawnin
 ### Server Components
 ```
 NPC_Service (Main)
-├── NPCSpawner ──────────┐
-├── ClientPhysicsSpawner ┤
-├── MovementBehavior ────┤
-├── PathfindingManager ──┤
-├── SightDetector ───────┤
-├── SightVisualizer ─────┤
-├── ClientPhysicsSync ───┤
-├── ServerFallbackSimulator
-├── Get()
-└── Set()
+├── Components/
+│   ├── Get()
+│   ├── Set()
+│   └── Others/
+│       ├── Spawning/
+│       │   └── NPCSpawner
+│       ├── Physics/
+│       │   ├── ClientPhysicsSpawner
+│       │   ├── ClientPhysicsSync
+│       │   └── ServerFallbackSimulator
+│       ├── Movement/
+│       │   ├── MovementBehavior
+│       │   └── PathfindingManager
+│       └── Sight/
+│           ├── SightDetector
+│           └── SightVisualizer
 ```
 
 ### Client Components
 ```
 NPC_Controller (Main)
-├── NPCRenderer ─────────┐
-├── NPCAnimator ─────────┤
-├── ClientPhysicsRenderer ┤
-├── ClientNPCManager ────┤
-├── ClientNPCSimulator ──┤
-├── ClientMovement ──────┤
-├── ClientPathfinding ───┤
-├── ClientSightDetector ─┤
-├── ClientSightVisualizer ┤
-├── ClientJumpSimulator ─┤
-├── Get()
-└── Set()
+├── Components/
+│   ├── Get()
+│   ├── Set()
+│   └── Others/
+│       ├── Rendering/
+│       │   ├── NPCRenderer
+│       │   ├── NPCAnimator
+│       │   └── ClientPhysicsRenderer
+│       ├── NPC/
+│       │   ├── ClientNPCManager
+│       │   └── ClientNPCSimulator
+│       ├── Movement/
+│       │   ├── ClientMovement
+│       │   ├── ClientPathfinding
+│       │   └── ClientJumpSimulator
+│       └── Sight/
+│           ├── ClientSightDetector
+│           └── ClientSightVisualizer
 ```
 
 ---
