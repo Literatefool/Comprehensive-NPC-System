@@ -49,9 +49,7 @@ function PathfindingManager.CreatePath(npc)
 	-- Show path visualizer if enabled (configured in RenderConfig)
 	if RenderConfig.SHOW_PATH_VISUALIZER then
 		path.Visualize = true
-		print("[PathfindingManager] Path created for", npc.Name, "with Visualize =", path.Visualize)
 	else
-		print("[PathfindingManager] Path created for", npc.Name, "- visualizer DISABLED (RenderConfig.SHOW_PATH_VISUALIZER =", RenderConfig.SHOW_PATH_VISUALIZER, ")")
 	end
 
 	-- Setup automatic speed synchronization when WalkSpeed changes
@@ -135,7 +133,6 @@ function PathfindingManager.RunPath(npcData, destination)
 	end
 
 	if npcData.Pathfinding then
-		print("[PathfindingManager] RunPath for", npcData.Model.Name, "to", destination, "| Visualize =", npcData.Pathfinding.Visualize)
 		npcData.Pathfinding:Run(destination)
 	end
 end

@@ -389,9 +389,12 @@ function NoobPath:Stop()
 		return
 	end
 	self.Idle = true
-	
+
 	self.Overide:Fire()
-	self.Move(GetPrimaryPivot(self.Character).Position)
+	-- Only call Move() in normal mode - ManualMovement handles position externally
+	if not self.ManualMovement then
+		self.Move(GetPrimaryPivot(self.Character).Position)
+	end
 	self.Stopped:Fire()
 end
 
