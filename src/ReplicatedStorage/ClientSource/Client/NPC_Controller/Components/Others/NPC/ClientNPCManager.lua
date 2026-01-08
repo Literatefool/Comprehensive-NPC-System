@@ -17,7 +17,8 @@ local Knit = require(ReplicatedStorage.Packages.Knit)
 
 local ClientNPCManager = {}
 
----- Dependencies (loaded in Init)
+---- Dependencies
+local NPC_Controller
 local NPC_Service
 local ClientNPCSimulator
 local ClientPhysicsRenderer
@@ -328,17 +329,10 @@ function ClientNPCManager.StartSimulation(npcFolder)
 	end)
 	table.insert(npcData.Connections, childAddedConnection)
 
-	-- Initialize simulation logic
-	if ClientNPCSimulator then
-		ClientNPCSimulator.InitializeNPC(npcData)
-	end
-
-	-- Setup sight detection
-	if ClientSightDetector then
-		ClientSightDetector.SetupSightDetector(npcData)
-	end
-
-	-- Link npcData to animator if visual model already exists (for UseClientPhysics support)
+	-- IMPORTANT: Link visual model BEFORE initializing simulation logic
+	-- This ensures pathfinding can be created properly (requires VisualModel)
+	-- Previously this was done AFTER InitializeNPC, causing a race condition
+	-- where pathfinding would never be created for melee NPCs
 	if ClientPhysicsRenderer then
 		local visualModel = ClientPhysicsRenderer.GetVisualModel(npcID)
 		if visualModel then
@@ -351,6 +345,16 @@ function ClientNPCManager.StartSimulation(npcFolder)
 				animator.LinkNPCData(visualModel, npcData)
 			end
 		end
+	end
+
+	-- Initialize simulation logic (AFTER visual model is set)
+	if ClientNPCSimulator then
+		ClientNPCSimulator.InitializeNPC(npcData)
+	end
+
+	-- Setup sight detection
+	if ClientSightDetector then
+		ClientSightDetector.SetupSightDetector(npcData)
 	end
 end
 
@@ -712,32 +716,24 @@ function ClientNPCManager.Start()
 end
 
 function ClientNPCManager.Init()
-	-- Load dependencies
+	-- Load config
 	OptimizationConfig = require(ReplicatedStorage.SharedSource.Datas.NPCs.OptimizationConfig)
 
-	-- Wait for Knit to start before getting services
+	-- Get NPC_Controller - components are accessed via NPC_Controller.Components
+	-- This avoids race conditions since ComponentInitializer loads all components
+	-- before Init() is called on any component
+	NPC_Controller = Knit.GetController("NPC_Controller")
+
+	-- Set local references to components for convenience
+	-- These are guaranteed to be loaded by ComponentInitializer before Init() is called
+	ClientNPCSimulator = NPC_Controller.Components.ClientNPCSimulator
+	ClientPhysicsRenderer = NPC_Controller.Components.ClientPhysicsRenderer
+	ClientSightDetector = NPC_Controller.Components.ClientSightDetector
+
+	-- NPC_Service is a Knit service, needs to wait for Knit to start
 	task.spawn(function()
 		Knit.OnStart():await()
 		NPC_Service = Knit.GetService("NPC_Service")
-
-		-- Load other components (they may not exist yet)
-		-- script.Parent = NPC/, script.Parent.Parent = Others/
-		local othersFolder = script.Parent.Parent
-
-		local simulatorModule = othersFolder.NPC:FindFirstChild("ClientNPCSimulator")
-		if simulatorModule then
-			ClientNPCSimulator = require(simulatorModule)
-		end
-
-		local rendererModule = othersFolder.Rendering:FindFirstChild("ClientPhysicsRenderer")
-		if rendererModule then
-			ClientPhysicsRenderer = require(rendererModule)
-		end
-
-		local sightDetectorModule = othersFolder.Sight:FindFirstChild("ClientSightDetector")
-		if sightDetectorModule then
-			ClientSightDetector = require(sightDetectorModule)
-		end
 	end)
 end
 

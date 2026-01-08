@@ -67,7 +67,7 @@ function ClientPathfinding.CreatePath(npcData, visualModel)
 		return nil
 	end
 
-	local humanoid = visualModel:WaitForChild("Humanoid", 0.1)
+	local humanoid = visualModel:FindFirstChild("Humanoid")
 	if not humanoid then
 		-- AnimationController mode - NoobPath requires Humanoid, use direct movement instead
 		-- This is intentional when USE_ANIMATION_CONTROLLER is enabled

@@ -55,14 +55,28 @@
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
+local Knit = require(ReplicatedStorage.Packages.Knit)
 
 local ClientNPCSimulator = {}
 
----- Dependencies (loaded in Init)
+---- Dependencies (accessed via NPC_Controller.Components to avoid race conditions)
+local NPC_Controller
 local ClientPathfinding
 local ClientJumpSimulator
 local ClientMovement
 local OptimizationConfig
+
+---- Helper to lazily get ClientPathfinding (handles race conditions)
+local function getClientPathfinding()
+	if ClientPathfinding then
+		return ClientPathfinding
+	end
+	-- Try to get it from NPC_Controller.Components
+	if NPC_Controller and NPC_Controller.Components then
+		ClientPathfinding = NPC_Controller.Components.ClientPathfinding
+	end
+	return ClientPathfinding
+end
 
 ---- Constants
 local STUCK_THRESHOLD = 0.5 -- studs - if moved less than this, considered stuck
@@ -250,6 +264,19 @@ end
 function ClientNPCSimulator.SimulateMovement(npcData, deltaTime)
 	if not npcData.Destination then
 		return
+	end
+
+	-- Lazy pathfinding creation (safety net for race conditions)
+	-- If pathfinding wasn't created during InitializeNPC, create it now
+	if not npcData.Pathfinding and ClientPathfinding and npcData.VisualModel then
+		local usePathfinding = npcData.Config.UsePathfinding
+		if usePathfinding == nil then
+			usePathfinding = true
+		end
+		if usePathfinding then
+			print("[ClientNPCSimulator] Lazy pathfinding creation for NPC:", npcData.VisualModel)
+			npcData.Pathfinding = ClientPathfinding.CreatePath(npcData, npcData.VisualModel)
+		end
 	end
 
 	-- Use pathfinding if available
@@ -467,6 +494,17 @@ function ClientNPCSimulator.SimulateCombatMovement(npcData, deltaTime)
 			npcData.Orientation = CFrame.lookAt(currentPos, currentPos + direction.Unit)
 		end
 		return
+	end
+
+	-- Lazy pathfinding creation (safety net for race conditions)
+	if not npcData.Pathfinding and ClientPathfinding and npcData.VisualModel then
+		local usePathfinding = npcData.Config.UsePathfinding
+		if usePathfinding == nil then
+			usePathfinding = true
+		end
+		if usePathfinding then
+			npcData.Pathfinding = ClientPathfinding.CreatePath(npcData, npcData.VisualModel)
+		end
 	end
 
 	-- Use pathfinding for combat movement if available
@@ -1019,29 +1057,19 @@ function ClientNPCSimulator.Start()
 end
 
 function ClientNPCSimulator.Init()
-	-- Load dependencies
+	-- Load config
 	OptimizationConfig = require(ReplicatedStorage.SharedSource.Datas.NPCs.OptimizationConfig)
 
-	-- Load other components (they may not exist yet)
-	-- script.Parent = NPC/, script.Parent.Parent = Others/
-	local othersFolder = script.Parent.Parent
+	-- Get NPC_Controller - components are accessed via NPC_Controller.Components
+	-- This avoids race conditions since ComponentInitializer loads all components
+	-- before Init() is called on any component
+	NPC_Controller = Knit.GetController("NPC_Controller")
 
-	task.spawn(function()
-		local pathfindingModule = othersFolder.Movement:FindFirstChild("ClientPathfinding")
-		if pathfindingModule then
-			ClientPathfinding = require(pathfindingModule)
-		end
-
-		local jumpModule = othersFolder.Movement:FindFirstChild("ClientJumpSimulator")
-		if jumpModule then
-			ClientJumpSimulator = require(jumpModule)
-		end
-
-		local movementModule = othersFolder.Movement:FindFirstChild("ClientMovement")
-		if movementModule then
-			ClientMovement = require(movementModule)
-		end
-	end)
+	-- Set local references to components for convenience
+	-- These are guaranteed to be loaded by ComponentInitializer before Init() is called
+	ClientPathfinding = NPC_Controller.Components.ClientPathfinding
+	ClientJumpSimulator = NPC_Controller.Components.ClientJumpSimulator
+	ClientMovement = NPC_Controller.Components.ClientMovement
 end
 
 return ClientNPCSimulator

@@ -25,7 +25,7 @@ local RenderConfig = {
 	-- ============ VISUALIZER SETTINGS ============
 
 	-- Show pathfinding waypoints (blue/yellow/red dots along NPC paths)
-	SHOW_PATH_VISUALIZER = false,
+	SHOW_PATH_VISUALIZER = true,
 
 	-- Show sight range visualization (cones/spheres for NPC vision)
 	SHOW_SIGHT_VISUALIZER = false,
