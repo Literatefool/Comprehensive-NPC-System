@@ -76,12 +76,21 @@ local WANDER_RADIUS_MAX = 30
 	Calculate the height offset from ground to HumanoidRootPart center
 	Based on Roblox's formula: Ground + HipHeight + (RootPartHeight / 2)
 
+	Supports both Humanoid mode and AnimationController mode (USE_ANIMATION_CONTROLLER)
+
 	@param npcData table - NPC data containing visual model info
 	@return number - Height offset from ground
 ]]
 local function calculateHeightOffset(npcData)
 	-- Try to get values from visual model first
 	if npcData.VisualModel then
+		-- Check for pre-calculated HeightOffset attribute (set when using AnimationController mode)
+		local storedHeightOffset = npcData.VisualModel:GetAttribute("HeightOffset")
+		if storedHeightOffset then
+			return storedHeightOffset
+		end
+
+		-- Fallback to Humanoid if available (traditional mode)
 		local humanoid = npcData.VisualModel:FindFirstChildOfClass("Humanoid")
 		local rootPart = npcData.VisualModel:FindFirstChild("HumanoidRootPart")
 
@@ -89,6 +98,14 @@ local function calculateHeightOffset(npcData)
 			local hipHeight = humanoid.HipHeight
 			local rootPartHalfHeight = rootPart.Size.Y / 2
 			return hipHeight + rootPartHalfHeight
+		end
+
+		-- Try to get from rootPart alone (AnimationController mode without stored attribute)
+		if rootPart then
+			-- Default HipHeight for R15 is around 2
+			local defaultHipHeight = 2
+			local rootPartHalfHeight = rootPart.Size.Y / 2
+			return defaultHipHeight + rootPartHalfHeight
 		end
 	end
 

@@ -5,7 +5,7 @@ local Knit = require(ReplicatedStorage.Packages.Knit)
 local SightVisualizer = {}
 
 ---- Configuration
-local VISUALIZER_ENABLED = true -- Toggle this to enable/disable visualizer globally
+local VISUALIZER_ENABLED = false -- Toggle this to enable/disable visualizer globally
 local VISUALIZATION_FOLDER_NAME = "SightVisualization"
 
 ---- Colors

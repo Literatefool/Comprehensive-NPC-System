@@ -69,7 +69,9 @@ function ClientPathfinding.CreatePath(npcData, visualModel)
 
 	local humanoid = visualModel:FindFirstChild("Humanoid")
 	if not humanoid then
-		warn("[ClientPathfinding] Visual model missing Humanoid for NPC:", npcData.ID)
+		-- AnimationController mode - NoobPath requires Humanoid, use direct movement instead
+		-- This is intentional when USE_ANIMATION_CONTROLLER is enabled
+		-- The NPC will use simple direct movement via ClientNPCSimulator fallback
 		return nil
 	end
 
@@ -171,14 +173,14 @@ end
 	@param reason string - Reason for being blocked
 ]]
 function ClientPathfinding.HandlePathBlocked(npcData, visualModel, reason)
-	local humanoid = visualModel and visualModel:FindFirstChild("Humanoid")
-	if not humanoid then
-		return
-	end
-
 	if reason == "ReachTimeout" then
 		-- Try jumping to unstuck
-		humanoid:ChangeState(Enum.HumanoidStateType.Jumping)
+		-- Works with both Humanoid and AnimationController modes
+		local humanoid = visualModel and visualModel:FindFirstChild("Humanoid")
+		if humanoid then
+			humanoid:ChangeState(Enum.HumanoidStateType.Jumping)
+		end
+		-- Also set npcData jump state for client simulation
 		npcData.IsJumping = true
 		npcData.JumpVelocity = npcData.Config.JumpPower or 50
 	elseif reason == "ReachFailed" then

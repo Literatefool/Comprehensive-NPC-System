@@ -10,7 +10,7 @@ local PathfindingManager = {}
 ]]
 
 ---- Configuration
-local SHOW_PATH_VISUALIZER = true -- Set to false to disable path visualization
+local SHOW_PATH_VISUALIZER = false -- Set to false to disable path visualization
 
 ---- Utilities
 local NoobPath = require(ReplicatedStorage.SharedSource.Utilities.Pathfinding.NoobPath)

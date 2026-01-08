@@ -5,14 +5,11 @@ local UserInputService = game:GetService("UserInputService")
 local MarketplaceService = game:GetService("MarketplaceService")
 local Knit = require(ReplicatedStorage.Packages.Knit)
 local Signal = require(ReplicatedStorage.Packages.Signal)
-local module = {
-
-}
+local module = {}
 
 ---- Knit Services
 
 ---- Knit Controllers
-
 
 ---- Utilities
 local utilsFolder = ReplicatedStorage.SharedSource.Utilities
@@ -26,14 +23,12 @@ local playerGui = plr.PlayerGui
 
 --- Datas
 
+function module.Start() 
 
-
-function module.Start()
-	
 end
 
-function module.Init()
-	
+function module.Init() 
+
 end
 
 return module

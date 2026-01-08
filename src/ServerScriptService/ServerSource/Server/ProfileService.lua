@@ -23,11 +23,11 @@ local ProfileService = Knit.CreateService({
 	UpdateSpecificData = Signal.new(),
 })
 
-local ActualProfileService =
-	require(ServerScriptService:WaitForChild("ServerSource"):WaitForChild("Externals"):WaitForChild("ProfileService"))
+local ActualProfileStore =
+	require(ServerScriptService:WaitForChild("ServerSource"):WaitForChild("Externals"):WaitForChild("ProfileStore"))
 local ProfileTemplate = require(ReplicatedStorage.SharedSource.Datas.ProfileTemplate)
 
-local ProfileStore
+local PlayerProfileStore
 
 local Profiles = {} -- [player] = profile
 ProfileService.Profiles = Profiles
@@ -35,16 +35,26 @@ ProfileService.Profiles = Profiles
 local function DataSuccessfullyLoaded(player)
 	-- Called when a profile is successfully loaded
 	-- Add any post-load logic here
+
 end
 
 local function HandlePlayerAdded(player)
-	local profile = ProfileStore:LoadProfileAsync("Player_" .. player.UserId)
+	local profile = PlayerProfileStore:StartSessionAsync("Player_" .. player.UserId)
 
 	if profile ~= nil then
 		profile:AddUserId(player.UserId) -- GDPR compliance
 		profile:Reconcile() -- Fill in missing variables from ProfileTemplate
 
-		profile:ListenToRelease(function()
+		-- Add MetaData for backwards compatibility
+		if not profile.MetaData then
+			profile.MetaData = {
+				ProfileCreateTime = profile.FirstSessionTime,
+				SessionLoadCount = profile.SessionLoadCount,
+				ActiveSession = profile.Session,
+			}
+		end
+
+		profile.OnSessionEnd:Connect(function()
 			Profiles[player] = nil
 			-- The profile could've been loaded on another Roblox server
 			player:Kick()
@@ -55,7 +65,7 @@ local function HandlePlayerAdded(player)
 			DataSuccessfullyLoaded(player)
 		else
 			-- Player left before the profile loaded
-			profile:Release()
+			profile:EndSession()
 		end
 	else
 		-- The profile couldn't be loaded possibly due to other
@@ -67,7 +77,7 @@ end
 local function HandlePlayerRemoving(player)
 	local profile = Profiles[player]
 	if profile ~= nil then
-		profile:Release()
+		profile:EndSession()
 	end
 end
 
@@ -143,7 +153,7 @@ function ProfileService.Client:GetProfileAge(player)
 		return 0
 	end
 
-	local profileAge = os.time() - profile.MetaData.ProfileCreateTime
+	local profileAge = os.time() - profile.FirstSessionTime
 	return profileAge
 end
 
@@ -166,7 +176,7 @@ function ProfileService:KnitStart()
 end
 
 function ProfileService:KnitInit()
-	ProfileStore = ActualProfileService.GetProfileStore("OriginalData1", ProfileTemplate)
+	PlayerProfileStore = ActualProfileStore.New("OriginalData1", ProfileTemplate)
 end
 
 return ProfileService

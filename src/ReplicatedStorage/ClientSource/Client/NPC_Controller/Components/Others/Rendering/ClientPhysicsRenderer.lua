@@ -22,6 +22,7 @@ local ClientPhysicsRenderer = {}
 
 ---- Dependencies
 local RenderConfig = require(ReplicatedStorage.SharedSource.Datas.NPCs.RenderConfig)
+local OptimizationConfig = require(ReplicatedStorage.SharedSource.Datas.NPCs.OptimizationConfig)
 local NPCAnimator -- Loaded in Init
 
 ---- Collision Configuration
@@ -38,6 +39,8 @@ local UNRENDER_HYSTERESIS = 1.3 -- Unrender at 1.3x render distance
 	Calculate height offset from visual model
 	Uses formula: HipHeight + (RootPartHeight / 2)
 
+	Supports both Humanoid mode and AnimationController mode
+
 	@param visualModel Model - The NPC visual model
 	@return number - Height offset from ground
 ]]
@@ -46,6 +49,13 @@ local function getHeightOffsetFromVisualModel(visualModel)
 		return 3 -- Default fallback
 	end
 
+	-- Check for stored HeightOffset attribute (AnimationController mode)
+	local storedHeightOffset = visualModel:GetAttribute("HeightOffset")
+	if storedHeightOffset then
+		return storedHeightOffset
+	end
+
+	-- Traditional mode: calculate from Humanoid
 	local humanoid = visualModel:FindFirstChildOfClass("Humanoid")
 	local rootPart = visualModel:FindFirstChild("HumanoidRootPart")
 
@@ -53,6 +63,11 @@ local function getHeightOffsetFromVisualModel(visualModel)
 		local hipHeight = humanoid.HipHeight
 		local rootPartHalfHeight = rootPart.Size.Y / 2
 		return hipHeight + rootPartHalfHeight
+	end
+
+	-- Fallback for rootPart-only (rare case)
+	if rootPart then
+		return 2 + (rootPart.Size.Y / 2) -- Default HipHeight 2
 	end
 
 	return 3 -- Default R15 fallback
@@ -221,10 +236,43 @@ function ClientPhysicsRenderer.RenderNPC(npcID)
 	local visualModel = originalModel:Clone()
 	visualModel.Name = npcID .. "_Visual"
 
-	-- IMPORTANT: Disable Humanoid physics BEFORE parenting to workspace
-	-- This prevents the Humanoid from "standing up" or applying physics on first frame
+	-- Handle Humanoid vs AnimationController based on optimization config
 	local humanoid = visualModel:FindFirstChildOfClass("Humanoid")
-	if humanoid then
+	local useAnimationController = OptimizationConfig.USE_ANIMATION_CONTROLLER and OptimizationConfig.UseClientPhysics
+
+	if useAnimationController and humanoid then
+		-- OPTIMIZATION: Replace Humanoid with lightweight AnimationController
+		-- This eliminates all Humanoid physics/state overhead (~50+ calculations per frame)
+
+		-- Store values before destroying Humanoid (needed for animation and positioning)
+		local rigType = humanoid.RigType
+		local hipHeight = humanoid.HipHeight
+		local rootPart = visualModel:FindFirstChild("HumanoidRootPart")
+		local rootPartHalfHeight = rootPart and (rootPart.Size.Y / 2) or 1
+
+		-- Calculate and store height offset for ground positioning
+		local heightOffset = hipHeight + rootPartHalfHeight
+
+		-- Destroy the Humanoid completely
+		humanoid:Destroy()
+		humanoid = nil
+
+		-- Create AnimationController (much lighter than Humanoid)
+		local animController = Instance.new("AnimationController")
+		animController.Name = "AnimationController"
+		animController.Parent = visualModel
+
+		-- Create Animator under AnimationController (required for LoadAnimation)
+		local animator = Instance.new("Animator")
+		animator.Parent = animController
+
+		-- Store attributes for NPCAnimator and ClientNPCSimulator to use
+		visualModel:SetAttribute("RigType", rigType.Name)
+		visualModel:SetAttribute("HeightOffset", heightOffset)
+		visualModel:SetAttribute("HipHeight", hipHeight)
+	elseif humanoid then
+		-- FALLBACK: Keep Humanoid but disable physics
+		-- This prevents the Humanoid from "standing up" or applying physics on first frame
 		humanoid.PlatformStand = true
 	end
 
@@ -360,35 +408,45 @@ function ClientPhysicsRenderer.RenderNPC(npcID)
 		ClientPhysicsRenderer.SetupHealthBar(visualModel, healthValue, maxHealthValue, connections)
 	end
 
-	-- Setup animator (PlatformStand already set earlier before parenting)
-	local humanoid = visualModel:FindFirstChildOfClass("Humanoid")
-	if humanoid then
-		local animator = humanoid:FindFirstChildOfClass("Animator")
+	-- Setup animator (supports both Humanoid and AnimationController modes)
+	local humanoidForAnim = visualModel:FindFirstChildOfClass("Humanoid")
+	local animController = visualModel:FindFirstChildOfClass("AnimationController")
+
+	-- Ensure Animator exists (under Humanoid or AnimationController)
+	if humanoidForAnim then
+		local animator = humanoidForAnim:FindFirstChildOfClass("Animator")
 		if not animator then
 			animator = Instance.new("Animator")
-			animator.Parent = humanoid
+			animator.Parent = humanoidForAnim
 		end
-
-		-- Setup BetterAnimate if available
-		if NPCAnimator then
-			task.spawn(function()
-				task.wait(0.5) -- Wait for model to settle
-
-				-- Get npcData from ClientNPCManager for UseClientPhysics support
-				local ClientNPCManagerModule = script.Parent.Parent.NPC:FindFirstChild("ClientNPCManager")
-				local npcData = nil
-				if ClientNPCManagerModule then
-					local manager = require(ClientNPCManagerModule)
-					npcData = manager.GetSimulatedNPC(npcID)
-				end
-
-				-- Build options with npcData for UseClientPhysics mode
-				local animatorOptions = config.ClientRenderData and config.ClientRenderData.animatorOptions or {}
-				animatorOptions.npcData = npcData
-
-				NPCAnimator.Setup(visualModel, nil, animatorOptions)
-			end)
+	elseif animController then
+		local animator = animController:FindFirstChildOfClass("Animator")
+		if not animator then
+			animator = Instance.new("Animator")
+			animator.Parent = animController
 		end
+	end
+
+	-- Setup BetterAnimate if available (works with both Humanoid and AnimationController)
+	if NPCAnimator and (humanoidForAnim or animController) then
+		task.spawn(function()
+			task.wait(0.5) -- Wait for model to settle
+
+			-- Get npcData from ClientNPCManager for UseClientPhysics support
+			local ClientNPCManagerModule = script.Parent.Parent.NPC:FindFirstChild("ClientNPCManager")
+			local npcData = nil
+			if ClientNPCManagerModule then
+				local manager = require(ClientNPCManagerModule)
+				npcData = manager.GetSimulatedNPC(npcID)
+			end
+
+			-- Build options with npcData for UseClientPhysics mode
+			local animatorOptions = config.ClientRenderData and config.ClientRenderData.animatorOptions or {}
+			animatorOptions.npcData = npcData
+			animatorOptions.useAnimationController = (animController ~= nil)
+
+			NPCAnimator.Setup(visualModel, nil, animatorOptions)
+		end)
 	end
 
 	-- Store render data

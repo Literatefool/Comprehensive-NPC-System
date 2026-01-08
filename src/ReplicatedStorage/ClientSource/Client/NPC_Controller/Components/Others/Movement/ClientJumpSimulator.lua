@@ -26,6 +26,8 @@ local GROUND_CHECK_DISTANCE
 	Calculate the height offset from ground to HumanoidRootPart center
 	Based on Roblox's formula: Ground + HipHeight + (RootPartHeight / 2)
 
+	Supports both Humanoid mode and AnimationController mode (USE_ANIMATION_CONTROLLER)
+
 	@param npcData table - NPC data containing visual model info
 	@return number - Height offset from ground
 ]]
@@ -37,6 +39,13 @@ local function calculateHeightOffset(npcData)
 
 	-- Try to get values from visual model
 	if npcData.VisualModel then
+		-- Check for pre-calculated HeightOffset attribute (AnimationController mode)
+		local storedHeightOffset = npcData.VisualModel:GetAttribute("HeightOffset")
+		if storedHeightOffset then
+			return storedHeightOffset
+		end
+
+		-- Traditional Humanoid mode
 		local humanoid = npcData.VisualModel:FindFirstChildOfClass("Humanoid")
 		local rootPart = npcData.VisualModel:FindFirstChild("HumanoidRootPart")
 
@@ -44,6 +53,13 @@ local function calculateHeightOffset(npcData)
 			local hipHeight = humanoid.HipHeight
 			local rootPartHalfHeight = rootPart.Size.Y / 2
 			return hipHeight + rootPartHalfHeight
+		end
+
+		-- AnimationController mode without stored attribute
+		if rootPart then
+			local defaultHipHeight = 2
+			local rootPartHalfHeight = rootPart.Size.Y / 2
+			return defaultHipHeight + rootPartHalfHeight
 		end
 	end
 

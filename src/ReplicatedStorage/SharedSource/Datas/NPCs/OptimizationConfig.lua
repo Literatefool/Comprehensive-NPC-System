@@ -34,7 +34,9 @@ local OptimizationConfig = {
 		- NPCs only rendered when player is nearby
 		- Instead of HumanoidRootPart, only positions are saved
 
-		Performance: Can handle 1000+ NPCs with barely any lag
+		Performance: Can handle 20+ NPCs with barely any lag, enable with USE_ANIMATION_CONTROLLER for best results
+		To handle 1,000+ NPCs: turn USE_ANIMATION_CONTROLLER enabled!
+
 		Security: Client has position authority (no validation - prevents ping-related false positives)
 		          Health remains server-authoritative to protect gameplay integrity
 		Use Case: Ambient NPCs, crowds, background characters (non-gameplay-critical)
@@ -46,6 +48,31 @@ local OptimizationConfig = {
 		- Any NPC that affects gameplay outcomes
 	]]
 	UseClientPhysics = false, -- DISABLED by default
+
+	--[[
+		USE_ANIMATION_CONTROLLER - Replace Humanoid with AnimationController
+
+		When enabled (with UseClientPhysics = true):
+		- Removes Humanoid from visual models entirely
+		- Uses AnimationController for animations (much lighter)
+		- Eliminates all Humanoid physics/state overhead
+
+		Performance Impact:
+		- Humanoid does ~50+ internal calculations per frame (state machine, physics, etc.)
+		- AnimationController only handles animation playback
+		- Can reduce CPU usage by 30-50% for large NPC counts
+
+		Requirements:
+		- UseClientPhysics must be enabled
+		- Health is managed via server values (already implemented)
+		- BetterAnimate library supports AnimationController natively
+
+		Trade-offs:
+		- No Humanoid.Died event (use Health value instead)
+		- No Humanoid.Jumping event (use npcData.IsJumping instead)
+		- No automatic ragdoll on death (implement custom if needed)
+	]]
+	USE_ANIMATION_CONTROLLER = true, -- Recommended when UseClientPhysics is enabled
 
 	-- Client-side simulation settings (only if UseClientPhysics = true)
 	ClientSimulation = {

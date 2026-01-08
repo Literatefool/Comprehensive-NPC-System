@@ -39,10 +39,13 @@ function NPCAnimator.Setup(npc, visualModel, options)
 	-- Use visual model if provided, otherwise animate the server NPC directly
 	local targetModel = visualModel or npc
 
-	-- Get humanoid and validate
+	-- Get humanoid OR AnimationController (supports both modes)
 	local humanoid = targetModel:FindFirstChildWhichIsA("Humanoid")
-	if not humanoid then
-		warn("[NPCAnimator] No Humanoid found in target model:", targetModel.Name)
+	local animController = targetModel:FindFirstChildWhichIsA("AnimationController")
+
+	-- Validate we have something to animate with
+	if not humanoid and not animController then
+		warn("[NPCAnimator] No Humanoid or AnimationController found in target model:", targetModel.Name)
 		return
 	end
 
@@ -57,8 +60,15 @@ function NPCAnimator.Setup(npc, visualModel, options)
 	local enableDebug = options.debug or NPCAnimator.DebugMode
 	local enableIK = options.inverseKinematics ~= false
 	local npcData = options.npcData
+	local useAnimationController = options.useAnimationController or (animController ~= nil and humanoid == nil)
 
-	local rigType = humanoid.RigType.Name
+	-- Get rig type (from Humanoid or attribute if using AnimationController)
+	local rigType
+	if humanoid then
+		rigType = humanoid.RigType.Name
+	else
+		rigType = targetModel:GetAttribute("RigType") or "R15" -- Default to R15 if not set
+	end
 
 	-- Create BetterAnimate instance
 	local animator = BetterAnimate.New(targetModel)
@@ -78,13 +88,17 @@ function NPCAnimator.Setup(npc, visualModel, options)
 
 	local nextState = nil
 
-	animator.Trove:Add(humanoid.Jumping:Connect(function()
-		nextState = "Jumping"
-	end))
+	-- Connect to Humanoid events only if we have a Humanoid
+	-- When using AnimationController, these are handled via npcData instead
+	if humanoid then
+		animator.Trove:Add(humanoid.Jumping:Connect(function()
+			nextState = "Jumping"
+		end))
 
-	animator.Trove:Add(humanoid.Died:Once(function()
-		NPCAnimator.Cleanup(npc)
-	end))
+		animator.Trove:Add(humanoid.Died:Once(function()
+			NPCAnimator.Cleanup(npc)
+		end))
+	end
 
 	NPCAnimator.SetupToolSupport(animator, targetModel, primaryPart, physicalProperties)
 
@@ -383,9 +397,10 @@ function NPCAnimator.InitializeStandalone(options)
 	npcsFolder.ChildAdded:Connect(function(npc)
 		if npc:IsA("Model") then
 			task.spawn(function()
-				-- Wait for humanoid to ensure NPC is fully loaded
-				local humanoid = npc:WaitForChild("Humanoid", 5)
-				if humanoid then
+				-- Wait for Humanoid OR AnimationController to ensure NPC is fully loaded
+				local humanoid = npc:WaitForChild("Humanoid", 2)
+				local animController = not humanoid and npc:WaitForChild("AnimationController", 2)
+				if humanoid or animController then
 					NPCAnimator.Setup(npc, nil, options) -- No visual model, animate server NPC directly
 				end
 			end)
@@ -396,8 +411,9 @@ function NPCAnimator.InitializeStandalone(options)
 	for _, npc in pairs(npcsFolder:GetChildren()) do
 		if npc:IsA("Model") then
 			task.spawn(function()
-				local humanoid = npc:WaitForChild("Humanoid", 5)
-				if humanoid then
+				local humanoid = npc:FindFirstChildWhichIsA("Humanoid")
+				local animController = npc:FindFirstChildWhichIsA("AnimationController")
+				if humanoid or animController then
 					NPCAnimator.Setup(npc, nil, options)
 				end
 			end)
