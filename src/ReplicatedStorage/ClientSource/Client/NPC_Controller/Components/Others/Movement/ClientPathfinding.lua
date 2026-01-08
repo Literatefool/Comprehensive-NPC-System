@@ -190,7 +190,14 @@ function ClientPathfinding.HandlePathBlocked(npcData, visualModel, reason)
 end
 
 --[[
-	Run pathfinding to destination
+	Run pathfinding to destination (ASYNC - non-blocking)
+
+	Path computation runs in background thread. NPC continues moving with
+	old waypoints until new path is ready. This prevents stuttering/pausing
+	during path recomputation.
+
+	If called while a previous computation is running, the old one is cancelled
+	and a new computation starts with the updated destination.
 
 	@param npcData table - NPC data
 	@param visualModel Model - The visual model
@@ -216,28 +223,74 @@ function ClientPathfinding.RunPath(npcData, visualModel, destination)
 	end
 
 	if npcData.Pathfinding then
-		npcData.Pathfinding:Run(groundDestination)
+		-- Increment version to cancel any in-progress computation (wrap at 100)
+		local newVersion = ((npcData._pathVersion or 0) % 100) + 1
+		npcData._pathVersion = newVersion
+		local thisVersion = newVersion
 
-		-- Reset error counters on successful path start
-		if not npcData.Pathfinding.Idle and #npcData.Pathfinding.Route > 0 then
-			npcData._pathErrorCount = 0
-			npcData._pathUnreachableCount = 0
-		end
+		-- Run path computation in background thread
+		task.spawn(function()
+			-- Compute the path (this is the blocking call)
+			npcData.Pathfinding:Run(groundDestination)
 
-		--[[
-			FIX: Manual movement mode index correction
+			-- Check if this computation was cancelled (newer one started)
+			if npcData._pathVersion ~= thisVersion then
+				return -- Cancelled, discard results
+			end
 
-			NoobPath:Run() calls TravelNextWaypoint() which increments Index from 1 to 2,
-			skipping the first waypoint. In normal mode this is fine (Humanoid physics
-			handles it), but in manual mode we need to read waypoints sequentially.
+			-- Reset error counters on successful path start
+			if not npcData.Pathfinding.Idle and #npcData.Pathfinding.Route > 0 then
+				npcData._pathErrorCount = 0
+				npcData._pathUnreachableCount = 0
+			end
 
-			Reset Index to 1 so GetWaypoint() returns the actual first waypoint.
-			This ensures the NPC moves toward Route[1] instead of trying to reach
-			Route[2] without going through Route[1] first.
-		]]
-		if npcData.Pathfinding.ManualMovement and not npcData.Pathfinding.Idle then
-			npcData.Pathfinding.Index = 1
-		end
+			--[[
+				FIX: Find correct starting waypoint after async computation
+
+				Problem: While path was computing, NPC continued moving. The computed
+				path starts from where the NPC WAS, but NPC is now further along.
+
+				Solution: Find the first waypoint that is AHEAD of the current
+				npcData.Position (not behind it). Skip waypoints we've already passed.
+			]]
+			if npcData.Pathfinding.ManualMovement and not npcData.Pathfinding.Idle then
+				local route = npcData.Pathfinding.Route
+				local currentPos = npcData.Position
+				local posFlat = Vector3.new(currentPos.X, 0, currentPos.Z)
+
+				-- Find the best starting waypoint
+				local bestIndex = 1
+				local skippedCount = 0
+				for i = 1, math.min(#route - 1, 3) do -- Check first 3 waypoints max
+					local wp = route[i].Position
+					local nextWp = route[i + 1] and route[i + 1].Position
+
+					if nextWp then
+						local wpFlat = Vector3.new(wp.X, 0, wp.Z)
+						local nextWpFlat = Vector3.new(nextWp.X, 0, nextWp.Z)
+
+						local distWpToNext = (nextWpFlat - wpFlat).Magnitude
+						local distPosToNext = (nextWpFlat - posFlat).Magnitude
+
+						-- If we're closer to the next waypoint than the current waypoint is,
+						-- we've already passed the current waypoint - skip it
+						if distPosToNext < distWpToNext then
+							bestIndex = i + 1
+							skippedCount = skippedCount + 1
+						else
+							break -- Found a waypoint we haven't passed
+						end
+					end
+				end
+
+				npcData.Pathfinding.Index = bestIndex
+
+				-- Log when waypoints are skipped (non-verbose)
+				if skippedCount > 0 then
+					print(string.format("[PathAsync] Skipped %d WP, start@%d/%d", skippedCount, bestIndex, #route))
+				end
+			end
+		end)
 	end
 end
 
@@ -262,6 +315,9 @@ end
 function ClientPathfinding.Cleanup(npcData)
 	-- Stop pathfinding
 	ClientPathfinding.StopPath(npcData)
+
+	-- Cancel any in-progress async computation
+	npcData._pathVersion = nil
 
 	-- Disconnect connections
 	if npcData.PathfindingConnections then
