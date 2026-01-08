@@ -1,22 +1,17 @@
 --[[
 	ClientSightDetector - Client-side sight detection for UseClientPhysics NPCs
 
-	OPTIMIZED: Uses a single global detection loop instead of per-NPC threads.
-	This reduces thread count from N (one per NPC) to 1 global thread.
-
 	Handles:
 	- Enemy detection within sight range
 	- Line of sight raycasting
 	- Directional cone filtering (if SightMode is "Directional")
 	- Target prioritization by distance
-	- Time-based scheduling to stagger detection checks
 
 	Adapted from server-side SightDetector for client simulation.
 ]]
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Players = game:GetService("Players")
-local RunService = game:GetService("RunService")
 
 local ClientSightDetector = {}
 
@@ -28,12 +23,9 @@ local DETECTION_INTERVAL_MIN = 1.0
 local DETECTION_INTERVAL_MAX = 3.0
 local DETECTION_INTERVAL_TARGETFOUND = 1.5
 local DIRECTIONAL_CONE_ANGLE = 120 -- Total cone angle in degrees
-local GLOBAL_LOOP_INTERVAL = 0.1 -- How often the global loop runs (10 Hz)
 
 ---- State
-local RegisteredNPCs = {} -- [npcID] = npcData (NPCs registered for sight detection)
-local NextDetectionTime = {} -- [npcID] = tick() when next detection should run
-local GlobalLoopRunning = false
+local DetectionThreads = {} -- [npcID] = thread
 
 --[[
 	Check if target is within front-facing cone (Directional mode only)
@@ -197,7 +189,7 @@ local function getNPCConfigFromFolder(npcModel)
 end
 
 --[[
-	Detect enemies in range for a single NPC
+	Detect enemies in range
 
 	@param npcData table - NPC simulation data
 	@return table - List of detected targets
@@ -324,72 +316,41 @@ local function detectEnemies(npcData)
 end
 
 --[[
-	Calculate next detection time with randomization
+	Randomize detection interval to prevent synchronized detection
 
 	@param hasTarget boolean - Whether NPC currently has a target
-	@return number - Next detection time (tick())
+	@return number - Detection interval
 ]]
-local function calculateNextDetectionTime(hasTarget)
-	local interval
+local function randomizeDetectionInterval(hasTarget)
 	if hasTarget then
-		interval = DETECTION_INTERVAL_TARGETFOUND
+		return DETECTION_INTERVAL_TARGETFOUND
 	else
-		interval = math.random() * (DETECTION_INTERVAL_MAX - DETECTION_INTERVAL_MIN) + DETECTION_INTERVAL_MIN
+		return math.random() * (DETECTION_INTERVAL_MAX - DETECTION_INTERVAL_MIN) + DETECTION_INTERVAL_MIN
 	end
-	return tick() + interval
 end
 
 --[[
-	Global detection loop - processes all registered NPCs
-	Runs at fixed interval and checks each NPC's scheduled detection time
+	Main sight detection thread
+
+	@param npcData table - NPC simulation data
 ]]
-local function globalDetectionLoop()
-	if GlobalLoopRunning then
-		return -- Prevent duplicate loops
-	end
-	GlobalLoopRunning = true
+local function sightDetectionThread(npcData)
+	-- Initial yield to let other initialization complete
+	task.wait()
 
-	while GlobalLoopRunning do
-		local currentTime = tick()
+	while npcData.IsAlive and not npcData.CleanedUp do
+		-- Detect enemies (wrapped in pcall for safety)
+		local success, err = pcall(function()
+			detectEnemies(npcData)
+		end)
 
-		-- Process all registered NPCs
-		for npcID, npcData in pairs(RegisteredNPCs) do
-			-- Check if NPC is still valid
-			if not npcData.IsAlive or npcData.CleanedUp then
-				-- Remove invalid NPCs
-				RegisteredNPCs[npcID] = nil
-				NextDetectionTime[npcID] = nil
-				continue
-			end
-
-			-- Check if it's time for this NPC's detection
-			local nextTime = NextDetectionTime[npcID] or 0
-			if currentTime >= nextTime then
-				-- Run detection (wrapped in pcall for safety)
-				local success, err = pcall(function()
-					detectEnemies(npcData)
-				end)
-
-				if not success then
-					warn("[ClientSightDetector] Error in detectEnemies for NPC", npcID, ":", err)
-				end
-
-				-- Schedule next detection
-				NextDetectionTime[npcID] = calculateNextDetectionTime(npcData.CurrentTarget ~= nil)
-			end
+		if not success then
+			warn("[ClientSightDetector] Error in detectEnemies:", err)
 		end
 
-		-- Wait for next loop iteration
-		task.wait(GLOBAL_LOOP_INTERVAL)
-	end
-end
-
---[[
-	Start the global detection loop if not already running
-]]
-local function ensureGlobalLoopRunning()
-	if not GlobalLoopRunning then
-		task.spawn(globalDetectionLoop)
+		-- Wait with randomized interval
+		local interval = randomizeDetectionInterval(npcData.CurrentTarget ~= nil)
+		task.wait(interval)
 	end
 end
 
@@ -401,20 +362,14 @@ end
 function ClientSightDetector.SetupSightDetector(npcData)
 	local npcID = npcData.ID
 
-	-- Don't register duplicates
-	if RegisteredNPCs[npcID] then
+	-- Don't create duplicate threads
+	if DetectionThreads[npcID] then
 		return
 	end
 
-	-- Register NPC for detection
-	RegisteredNPCs[npcID] = npcData
-
-	-- Schedule first detection with small random offset to prevent all NPCs detecting at same time
-	local initialDelay = math.random() * DETECTION_INTERVAL_MIN
-	NextDetectionTime[npcID] = tick() + initialDelay
-
-	-- Ensure global loop is running
-	ensureGlobalLoopRunning()
+	-- Start detection thread
+	local thread = task.spawn(sightDetectionThread, npcData)
+	DetectionThreads[npcID] = thread
 end
 
 --[[
@@ -425,12 +380,15 @@ end
 function ClientSightDetector.CleanupSightDetector(npcData)
 	local npcID = npcData.ID
 
-	-- Mark as cleaned up
+	-- Mark as cleaned up to stop thread
 	npcData.CleanedUp = true
 
-	-- Unregister NPC
-	RegisteredNPCs[npcID] = nil
-	NextDetectionTime[npcID] = nil
+	-- Cancel thread if exists
+	local thread = DetectionThreads[npcID]
+	if thread then
+		task.cancel(thread)
+		DetectionThreads[npcID] = nil
+	end
 
 	-- Cleanup visualizations
 	if ClientSightVisualizer then
@@ -440,16 +398,6 @@ function ClientSightDetector.CleanupSightDetector(npcData)
 	-- Clear target state
 	npcData.CurrentTarget = nil
 	npcData.TargetInSight = false
-
-	-- Stop global loop if no NPCs left
-	local hasNPCs = false
-	for _ in pairs(RegisteredNPCs) do
-		hasNPCs = true
-		break
-	end
-	if not hasNPCs then
-		GlobalLoopRunning = false
-	end
 end
 
 --[[
@@ -459,12 +407,7 @@ end
 	@return table - Detected targets
 ]]
 function ClientSightDetector.ForceDetection(npcData)
-	local result = detectEnemies(npcData)
-	-- Reset next detection time
-	if npcData.ID then
-		NextDetectionTime[npcData.ID] = calculateNextDetectionTime(npcData.CurrentTarget ~= nil)
-	end
-	return result
+	return detectEnemies(npcData)
 end
 
 --[[
@@ -474,20 +417,7 @@ end
 	@return boolean
 ]]
 function ClientSightDetector.IsActive(npcID)
-	return RegisteredNPCs[npcID] ~= nil
-end
-
---[[
-	Get count of registered NPCs (for debugging)
-
-	@return number
-]]
-function ClientSightDetector.GetRegisteredCount()
-	local count = 0
-	for _ in pairs(RegisteredNPCs) do
-		count = count + 1
-	end
-	return count
+	return DetectionThreads[npcID] ~= nil
 end
 
 function ClientSightDetector.Start()
