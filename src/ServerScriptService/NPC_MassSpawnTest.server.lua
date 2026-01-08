@@ -32,7 +32,7 @@ local BASEPLATE_SIZE = Vector3.new(2048, 16, 2048)
 local BASEPLATE_TOP_Y = BASEPLATE_POSITION.Y + (BASEPLATE_SIZE.Y / 2) -- Y = 0
 
 -- Spawn Configuration
-local NPC_COUNT = 45
+local NPC_COUNT = 300
 local SPAWN_HEIGHT_OFFSET = 5 -- Spawn NPCs slightly above ground
 local SPAWN_PADDING = 50 -- Keep NPCs away from edges
 
