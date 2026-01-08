@@ -52,14 +52,21 @@ local ClientPathfinding = {}
 
 ---- Dependencies
 local NoobPath = require(ReplicatedStorage.SharedSource.Utilities.Pathfinding.NoobPath)
+local GoodSignal = require(ReplicatedStorage.SharedSource.Utilities.Pathfinding.NoobPath.GoodSignal)
 local RenderConfig = require(ReplicatedStorage.SharedSource.Datas.NPCs.RenderConfig)
 local OptimizationConfig = require(ReplicatedStorage.SharedSource.Datas.NPCs.OptimizationConfig)
 
 --[[
 	Create NoobPath instance for client-side NPC
 
+	Supports both Humanoid mode and AnimationController mode:
+	- Humanoid mode: Uses NoobPath.Humanoid() constructor
+	- AnimationController mode: Uses NoobPath.new() with dummy signals
+
+	Both modes use ManualMovement=true since ClientNPCSimulator handles position updates.
+
 	@param npcData table - Client-side NPC data
-	@param visualModel Model - The visual NPC model with Humanoid
+	@param visualModel Model - The visual NPC model (with Humanoid or AnimationController)
 	@return NoobPath? - Configured pathfinding instance or nil
 ]]
 function ClientPathfinding.CreatePath(npcData, visualModel)
@@ -67,51 +74,68 @@ function ClientPathfinding.CreatePath(npcData, visualModel)
 		return nil
 	end
 
-	local humanoid = visualModel:FindFirstChild("Humanoid")
-	if not humanoid then
-		-- AnimationController mode - NoobPath requires Humanoid, use direct movement instead
-		-- This is intentional when USE_ANIMATION_CONTROLLER is enabled
-		-- The NPC will use simple direct movement via ClientNPCSimulator fallback
-		return nil
-	end
-
 	-- Get pathfinding config
 	local pathConfig = OptimizationConfig.ClientPathfinding
+	local agentParams = {
+		AgentRadius = pathConfig.AGENT_RADIUS,
+		AgentHeight = pathConfig.AGENT_HEIGHT,
+		AgentCanJump = pathConfig.AGENT_CAN_JUMP,
+		WaypointSpacing = pathConfig.WAYPOINT_SPACING,
+		Costs = pathConfig.TERRAIN_COSTS,
+	}
 
-	-- Create NoobPath instance with manual movement mode
-	-- ManualMovement = true means NoobPath only computes paths, doesn't move the model
-	local path = NoobPath.Humanoid(
-		visualModel,
-		{
-			AgentRadius = pathConfig.AGENT_RADIUS,
-			AgentHeight = pathConfig.AGENT_HEIGHT,
-			AgentCanJump = pathConfig.AGENT_CAN_JUMP,
-			WaypointSpacing = pathConfig.WAYPOINT_SPACING,
-			Costs = pathConfig.TERRAIN_COSTS,
-		},
-		false, -- Precise (not needed for manual movement)
-		true -- ManualMovement mode (only compute paths, don't auto-move)
-	)
+	local humanoid = visualModel:FindFirstChild("Humanoid")
+	local path
+
+	if humanoid then
+		-- Humanoid mode: Use standard NoobPath.Humanoid constructor
+		path = NoobPath.Humanoid(
+			visualModel,
+			agentParams,
+			false, -- Precise (not needed for manual movement)
+			true -- ManualMovement mode (only compute paths, don't auto-move)
+		)
+
+		-- Setup automatic speed synchronization (Humanoid mode only)
+		local speedConnection = humanoid:GetPropertyChangedSignal("WalkSpeed"):Connect(function()
+			if path then
+				path.Speed = humanoid.WalkSpeed
+			end
+		end)
+
+		-- Store connection for cleanup
+		npcData.PathfindingConnections = npcData.PathfindingConnections or {}
+		table.insert(npcData.PathfindingConnections, speedConnection)
+	else
+		-- AnimationController mode: Use NoobPath.new() with dummy signals
+		-- In ManualMovement mode, Move/Jump functions are never called,
+		-- so we can use empty functions and fake signals
+		local dummyMove = function() end
+		local dummyJump = function() end
+		local dummyMoveFinished = GoodSignal.new()
+		local dummyJumpFinished = GoodSignal.new()
+
+		path = NoobPath.new(
+			visualModel,
+			agentParams,
+			dummyMove,
+			dummyJump,
+			dummyJumpFinished,
+			dummyMoveFinished
+		)
+
+		-- Enable manual movement mode
+		path.ManualMovement = true
+	end
 
 	-- Configure path settings
 	path.Timeout = true -- Enable timeout detection
-	path.Speed = npcData.Config.WalkSpeed or humanoid.WalkSpeed
+	path.Speed = npcData.Config.WalkSpeed or 16
 
 	-- Show path visualizer if enabled (configured in RenderConfig)
 	if RenderConfig.SHOW_PATH_VISUALIZER then
 		path.Visualize = true
 	end
-
-	-- Setup automatic speed synchronization
-	local speedConnection = humanoid:GetPropertyChangedSignal("WalkSpeed"):Connect(function()
-		if path then
-			path.Speed = humanoid.WalkSpeed
-		end
-	end)
-
-	-- Store connection for cleanup
-	npcData.PathfindingConnections = npcData.PathfindingConnections or {}
-	table.insert(npcData.PathfindingConnections, speedConnection)
 
 	-- Setup error handling
 	path.Error:Connect(function(errorType)
@@ -294,11 +318,6 @@ function ClientPathfinding.RunPath(npcData, visualModel, destination)
 				end
 
 				npcData.Pathfinding.Index = bestIndex
-
-				-- Log when waypoints are skipped (non-verbose)
-				if skippedCount > 0 then
-					print(string.format("[PathAsync] Skipped %d WP, start@%d/%d", skippedCount, bestIndex, #route))
-				end
 			end
 		end)
 	end

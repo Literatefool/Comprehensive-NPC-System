@@ -73,7 +73,7 @@ local OptimizationConfig = {
 		- No Humanoid.Jumping event (use npcData.IsJumping instead)
 		- No automatic ragdoll on death (implement custom if needed)
 	]]
-	USE_ANIMATION_CONTROLLER = false, -- Recommended when UseClientPhysics is enabled
+	USE_ANIMATION_CONTROLLER = true, -- Recommended when UseClientPhysics is enabled
 
 	-- Client-side simulation settings (only if UseClientPhysics = true)
 	ClientSimulation = {
