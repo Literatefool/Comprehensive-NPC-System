@@ -69,6 +69,12 @@ if spawners then
 	end
 end
 
+-- Debug: Print collected spawners
+print("\n📋 Collected " .. #spawnPositions .. " spawners:")
+for i, info in ipairs(spawnPositions) do
+	print("  " .. i .. ". Category: '" .. info.Category .. "', Name: '" .. info.Name .. "'")
+end
+
 -- Test 1: Spawn NPC with Client Rendering Configuration
 print("\n📌 Test 1: Spawning test NPCs...")
 task.wait(1)
@@ -171,12 +177,17 @@ for i = 1, #spawnPositions do
 	local namePrefix = "ranged"
 
 	-- Configure based on spawner category
-	if spawnInfo.Category == "Melee" then
+	if spawnInfo.Category == "Ranged" or spawnInfo.Category == "ClientRender" then
+		-- Ranged NPCs (default values already set)
+		categoryName = "Ranged"
+		namePrefix = "ranged"
+	elseif spawnInfo.Category == "Melee" then
 		movementMode = "Melee"
 		categoryName = "Melee"
 		namePrefix = "melee"
 	elseif spawnInfo.Category == "No_Pathfinding" then
 		usePathfinding = false
+		-- Still counts as Ranged category
 	elseif spawnInfo.Category == "CantWalk" then
 		canWalk = false
 		categoryName = "CantWalk"
@@ -185,10 +196,16 @@ for i = 1, #spawnPositions do
 		sightMode = "Directional"
 		categoryName = "ConeSight"
 		namePrefix = "conesight"
+	else
+		-- Skip unrecognized folders (like "Scared-NPC")
+		print("  Spawner " .. i .. ": SKIPPED (unrecognized folder '" .. spawnInfo.Category .. "')")
+		continue
 	end
 
 	-- Check if we've reached the spawn limit for this category
+	print("  Spawner " .. i .. ": folder='" .. spawnInfo.Category .. "' -> categoryName='" .. categoryName .. "' (count: " .. categoryCounters[categoryName] .. "/" .. SPAWN_LIMITS[categoryName] .. ")")
 	if categoryCounters[categoryName] >= SPAWN_LIMITS[categoryName] then
+		print("    SKIPPED (limit reached)")
 		continue -- Skip this spawn
 	end
 
@@ -234,10 +251,14 @@ for i = 1, #spawnPositions do
 
 	if npc then
 		table.insert(testNPCs, npc)
+		print("    ✅ Spawned: " .. npcName)
+	else
+		print("    ❌ FAILED to spawn: " .. npcName)
 	end
 end
 
 print("\n✅ Spawned " .. #testNPCs .. " NPCs total")
+print("Final counts - Ranged: " .. categoryCounters.Ranged .. ", Melee: " .. categoryCounters.Melee .. ", CantWalk: " .. categoryCounters.CantWalk .. ", ConeSight: " .. categoryCounters.ConeSight)
 
 -- Give NPCs a movement target to test animations
 if testNPC1 and testNPC1.PrimaryPart then
