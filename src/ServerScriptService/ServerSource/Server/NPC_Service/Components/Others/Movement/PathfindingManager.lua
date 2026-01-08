@@ -9,8 +9,8 @@ local PathfindingManager = {}
 	When disabled, NPCs will use simple Humanoid:MoveTo() instead.
 ]]
 
----- Configuration
-local SHOW_PATH_VISUALIZER = false -- Set to false to disable path visualization
+---- Configuration (loaded from RenderConfig)
+local RenderConfig = require(ReplicatedStorage.SharedSource.Datas.NPCs.RenderConfig)
 
 ---- Utilities
 local NoobPath = require(ReplicatedStorage.SharedSource.Utilities.Pathfinding.NoobPath)
@@ -46,9 +46,12 @@ function PathfindingManager.CreatePath(npc)
 	path.Timeout = true -- Enable timeout detection
 	path.Speed = humanoid.WalkSpeed
 
-	-- Show path visualizer if enabled
-	if SHOW_PATH_VISUALIZER then
+	-- Show path visualizer if enabled (configured in RenderConfig)
+	if RenderConfig.SHOW_PATH_VISUALIZER then
 		path.Visualize = true
+		print("[PathfindingManager] Path created for", npc.Name, "with Visualize =", path.Visualize)
+	else
+		print("[PathfindingManager] Path created for", npc.Name, "- visualizer DISABLED (RenderConfig.SHOW_PATH_VISUALIZER =", RenderConfig.SHOW_PATH_VISUALIZER, ")")
 	end
 
 	-- Setup automatic speed synchronization when WalkSpeed changes
@@ -132,6 +135,7 @@ function PathfindingManager.RunPath(npcData, destination)
 	end
 
 	if npcData.Pathfinding then
+		print("[PathfindingManager] RunPath for", npcData.Model.Name, "to", destination, "| Visualize =", npcData.Pathfinding.Visualize)
 		npcData.Pathfinding:Run(destination)
 	end
 end

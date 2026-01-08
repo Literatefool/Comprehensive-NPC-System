@@ -1,3 +1,4 @@
+local TracerService = game:GetService("TracerService")
 --[[
 	OptimizationConfig - Advanced NPC optimization settings
 

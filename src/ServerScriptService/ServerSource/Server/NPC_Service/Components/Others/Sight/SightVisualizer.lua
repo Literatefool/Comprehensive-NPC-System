@@ -4,8 +4,8 @@ local Knit = require(ReplicatedStorage.Packages.Knit)
 
 local SightVisualizer = {}
 
----- Configuration
-local VISUALIZER_ENABLED = false -- Toggle this to enable/disable visualizer globally
+---- Configuration (loaded from RenderConfig)
+local RenderConfig = require(ReplicatedStorage.SharedSource.Datas.NPCs.RenderConfig)
 local VISUALIZATION_FOLDER_NAME = "SightVisualization"
 
 ---- Colors
@@ -21,21 +21,12 @@ local npcVisualCache = {} -- [npcModel] = {folder, sphere, cone, lastRadius, las
 local npcIdCounter = 0 -- Counter for unique NPC IDs
 
 --[[
-	Toggle visualizer on/off
-	
-	@param enabled boolean - Enable or disable visualizer
-]]
-function SightVisualizer:SetEnabled(enabled)
-	VISUALIZER_ENABLED = enabled
-end
+	Get visualizer enabled state (configured in RenderConfig.SHOW_SIGHT_VISUALIZER)
 
---[[
-	Get visualizer enabled state
-	
 	@return boolean - Whether visualizer is enabled
 ]]
 function SightVisualizer:IsEnabled()
-	return VISUALIZER_ENABLED
+	return RenderConfig.SHOW_SIGHT_VISUALIZER
 end
 
 --[[
@@ -328,7 +319,7 @@ end
 	@param angle number - Cone angle (for directional mode)
 ]]
 function SightVisualizer:UpdateVisualization(self, detectedTargets, angle)
-	if not VISUALIZER_ENABLED then
+	if not RenderConfig.SHOW_SIGHT_VISUALIZER then
 		return
 	end
 

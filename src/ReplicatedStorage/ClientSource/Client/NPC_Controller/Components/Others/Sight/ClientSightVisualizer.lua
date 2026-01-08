@@ -15,8 +15,8 @@ local Workspace = game:GetService("Workspace")
 
 local ClientSightVisualizer = {}
 
----- Configuration
-local VISUALIZER_ENABLED = false -- Toggle this to enable/disable visualizer globally
+---- Configuration (loaded from RenderConfig)
+local RenderConfig = require(ReplicatedStorage.SharedSource.Datas.NPCs.RenderConfig)
 local VISUALIZATION_FOLDER_NAME = "ClientSightVisualization"
 
 ---- Colors
@@ -32,26 +32,12 @@ local npcVisualCache = {} -- [npcID] = {folder, sphere, cone, lastRadius, lastAn
 local npcIdCounter = 0 -- Counter for unique NPC IDs
 
 --[[
-	Toggle visualizer on/off
-
-	@param enabled boolean - Enable or disable visualizer
-]]
-function ClientSightVisualizer:SetEnabled(enabled)
-	VISUALIZER_ENABLED = enabled
-
-	-- Cleanup all visualizations if disabled
-	if not enabled then
-		ClientSightVisualizer:CleanupAll()
-	end
-end
-
---[[
-	Get visualizer enabled state
+	Get visualizer enabled state (configured in RenderConfig.SHOW_SIGHT_VISUALIZER)
 
 	@return boolean - Whether visualizer is enabled
 ]]
 function ClientSightVisualizer:IsEnabled()
-	return VISUALIZER_ENABLED
+	return RenderConfig.SHOW_SIGHT_VISUALIZER
 end
 
 --[[
@@ -355,7 +341,7 @@ end
 	@param angle number - Cone angle (for directional mode)
 ]]
 function ClientSightVisualizer:UpdateVisualization(npcData, detectedTargets, angle)
-	if not VISUALIZER_ENABLED then
+	if not RenderConfig.SHOW_SIGHT_VISUALIZER then
 		return
 	end
 

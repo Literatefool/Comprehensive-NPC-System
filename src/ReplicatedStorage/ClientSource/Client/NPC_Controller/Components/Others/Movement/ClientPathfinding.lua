@@ -97,8 +97,8 @@ function ClientPathfinding.CreatePath(npcData, visualModel)
 	path.Timeout = true -- Enable timeout detection
 	path.Speed = npcData.Config.WalkSpeed or humanoid.WalkSpeed
 
-	-- Show visualizer in debug mode
-	if RenderConfig.DEBUG_MODE then
+	-- Show path visualizer if enabled (configured in RenderConfig)
+	if RenderConfig.SHOW_PATH_VISUALIZER then
 		path.Visualize = true
 	end
 

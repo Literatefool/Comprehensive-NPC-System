@@ -21,6 +21,14 @@ local RenderConfig = {
 	
 	-- Enable visual debugging (show wireframes, info)
 	DEBUG_MODE = false,
+
+	-- ============ VISUALIZER SETTINGS ============
+
+	-- Show pathfinding waypoints (blue/yellow/red dots along NPC paths)
+	SHOW_PATH_VISUALIZER = false,
+
+	-- Show sight range visualization (cones/spheres for NPC vision)
+	SHOW_SIGHT_VISUALIZER = false,
 }
 
 return RenderConfig
