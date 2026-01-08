@@ -122,8 +122,14 @@ function PathfindingManager.HandlePathBlocked(npc, reason)
 end
 
 --[[
-	Run pathfinding to destination
-	
+	Run pathfinding to destination (ASYNC - non-blocking)
+
+	Path computation runs in background thread. This prevents the main
+	thread from yielding during PathfindingService computation.
+
+	If called while a previous computation is running, the old one is cancelled
+	and a new computation starts with the updated destination.
+
 	@param npcData table - NPC instance data
 	@param destination Vector3 - Target destination
 ]]
@@ -133,7 +139,36 @@ function PathfindingManager.RunPath(npcData, destination)
 	end
 
 	if npcData.Pathfinding then
-		npcData.Pathfinding:Run(destination)
+		-- Increment version to cancel any in-progress computation (wrap at 100)
+		local newVersion = ((npcData._pathVersion or 0) % 100) + 1
+		npcData._pathVersion = newVersion
+		local thisVersion = newVersion
+
+		-- Run path computation in background thread
+		task.spawn(function()
+			-- Safety check in case NPC was destroyed during yield
+			if not npcData.Pathfinding then
+				return
+			end
+
+			-- Compute the path (this is the blocking call)
+			npcData.Pathfinding:Run(destination)
+
+			-- Check if this computation was cancelled (newer one started)
+			if npcData._pathVersion ~= thisVersion then
+				return -- Cancelled, discard results
+			end
+
+			-- Safety check in case NPC was destroyed during computation
+			if not npcData.Pathfinding then
+				return
+			end
+
+			-- Reset error counters on successful path start
+			if not npcData.Pathfinding.Idle and #npcData.Pathfinding.Route > 0 then
+				npcData._pathErrorCount = 0
+			end
+		end)
 	end
 end
 

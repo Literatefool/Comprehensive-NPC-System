@@ -230,12 +230,22 @@ function ClientPathfinding.RunPath(npcData, visualModel, destination)
 
 		-- Run path computation in background thread
 		task.spawn(function()
+			-- Safety check in case NPC was destroyed during yield
+			if not npcData.Pathfinding then
+				return
+			end
+
 			-- Compute the path (this is the blocking call)
 			npcData.Pathfinding:Run(groundDestination)
 
 			-- Check if this computation was cancelled (newer one started)
 			if npcData._pathVersion ~= thisVersion then
 				return -- Cancelled, discard results
+			end
+
+			-- Safety check in case NPC was destroyed during computation
+			if not npcData.Pathfinding then
+				return
 			end
 
 			-- Reset error counters on successful path start
