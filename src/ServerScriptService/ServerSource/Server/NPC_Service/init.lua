@@ -8,7 +8,8 @@ local NPC_Service = Knit.CreateService({
 	Instance = script,
 	Client = {
 		-- Signals for UseClientPhysics client-physics system
-		NPCPositionUpdated = Knit.CreateSignal(), -- Broadcast NPC position updates to nearby clients
+		NPCPositionUpdated = Knit.CreateSignal(), -- Broadcast NPC position updates to nearby clients (legacy)
+		NPCBatchPositionUpdated = Knit.CreateSignal(), -- Broadcast batched NPC position updates (optimized)
 		NPCsOrphaned = Knit.CreateSignal(), -- Broadcast when NPCs need new owners
 		NPCJumpTriggered = Knit.CreateSignal(), -- Broadcast when NPC should jump (for testing/manual control)
 	},
@@ -216,10 +217,23 @@ end
 
 --[[
 	Client method: Update NPC position (called by simulating client)
+	Legacy method - kept for backwards compatibility when USE_BATCHED_UPDATES = false
 ]]
 function NPC_Service.Client:UpdateNPCPosition(player, npcID, position, orientation)
 	if NPC_Service.Components.ClientPhysicsSync then
 		NPC_Service.Components.ClientPhysicsSync.HandlePositionUpdate(player, npcID, position, orientation)
+	end
+end
+
+--[[
+	Client method: Batch update NPC positions (optimized - single network call)
+
+	@param player Player - The player sending the updates
+	@param batchedUpdates table - {[npcID] = {Position = Vector3, Orientation = CFrame}, ...}
+]]
+function NPC_Service.Client:BatchUpdateNPCPositions(player, batchedUpdates)
+	if NPC_Service.Components.ClientPhysicsSync then
+		NPC_Service.Components.ClientPhysicsSync.HandleBatchPositionUpdate(player, batchedUpdates)
 	end
 end
 

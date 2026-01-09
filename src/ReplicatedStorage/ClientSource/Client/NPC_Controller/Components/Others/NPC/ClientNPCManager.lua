@@ -28,6 +28,7 @@ local OptimizationConfig
 ---- State
 local SimulatedNPCs = {} -- [npcID] = npcData (NPCs this client is simulating)
 local LastSyncTimes = {} -- [npcID] = lastSyncTick
+local LastSentData = {} -- [npcID] = {Position, Orientation} for delta compression
 local LocalPlayer = Players.LocalPlayer
 
 
@@ -395,6 +396,7 @@ function ClientNPCManager.StopSimulation(npcID)
 	-- Remove from tracking
 	SimulatedNPCs[npcID] = nil
 	LastSyncTimes[npcID] = nil
+	LastSentData[npcID] = nil
 end
 
 --[[
@@ -500,18 +502,81 @@ end
 
 --[[
 	Position sync loop - sends position updates to server
+
+	OPTIMIZATIONS:
+	- Delta compression: Only sends updates for NPCs that have moved/rotated
+	- Batching: Sends all updates in a single network call instead of N calls
 ]]
 function ClientNPCManager.PositionSyncLoop()
 	local syncInterval = OptimizationConfig.ClientSimulation.POSITION_SYNC_INTERVAL
+	local useDeltaCompression = OptimizationConfig.ClientSimulation.USE_DELTA_COMPRESSION
+	local useBatchedUpdates = OptimizationConfig.ClientSimulation.USE_BATCHED_UPDATES
 
 	while true do
 		task.wait(syncInterval)
 
-		for npcID, npcData in pairs(SimulatedNPCs) do
-			if npcData.IsAlive and npcData.Position then
-				-- Send position update to server
-				NPC_Service:UpdateNPCPosition(npcID, npcData.Position, npcData.Orientation)
-				LastSyncTimes[npcID] = tick()
+		if useBatchedUpdates then
+			-- Batched mode: collect all updates and send in single call
+			local batchedUpdates = {}
+
+			for npcID, npcData in pairs(SimulatedNPCs) do
+				if npcData.IsAlive and npcData.Position then
+					local shouldSend = true
+
+					-- Delta compression: check if position/orientation changed
+					if useDeltaCompression then
+						local lastData = LastSentData[npcID]
+						if lastData then
+							local posChanged = lastData.Position ~= npcData.Position
+							local orientChanged = lastData.Orientation ~= npcData.Orientation
+							shouldSend = posChanged or orientChanged
+						end
+					end
+
+					if shouldSend then
+						batchedUpdates[npcID] = {
+							Position = npcData.Position,
+							Orientation = npcData.Orientation,
+						}
+						-- Update last sent data for delta compression
+						LastSentData[npcID] = {
+							Position = npcData.Position,
+							Orientation = npcData.Orientation,
+						}
+						LastSyncTimes[npcID] = tick()
+					end
+				end
+			end
+
+			-- Send batch if there are any updates
+			if next(batchedUpdates) then
+				NPC_Service:BatchUpdateNPCPositions(batchedUpdates)
+			end
+		else
+			-- Legacy mode: individual calls per NPC
+			for npcID, npcData in pairs(SimulatedNPCs) do
+				if npcData.IsAlive and npcData.Position then
+					local shouldSend = true
+
+					-- Delta compression: check if position/orientation changed
+					if useDeltaCompression then
+						local lastData = LastSentData[npcID]
+						if lastData then
+							local posChanged = lastData.Position ~= npcData.Position
+							local orientChanged = lastData.Orientation ~= npcData.Orientation
+							shouldSend = posChanged or orientChanged
+						end
+					end
+
+					if shouldSend then
+						NPC_Service:UpdateNPCPosition(npcID, npcData.Position, npcData.Orientation)
+						LastSentData[npcID] = {
+							Position = npcData.Position,
+							Orientation = npcData.Orientation,
+						}
+						LastSyncTimes[npcID] = tick()
+					end
+				end
 			end
 		end
 	end
@@ -532,6 +597,7 @@ end
 	The check `if not SimulatedNPCs[npcID]` prevents this race condition.
 ]]
 function ClientNPCManager.ListenForPositionUpdates()
+	-- Legacy: Listen for individual position updates
 	NPC_Service.NPCPositionUpdated:Connect(function(npcID, newPosition, newOrientation)
 		-- CRITICAL: Only update if we're NOT simulating this NPC ourselves
 		-- This prevents race conditions where network updates overwrite local simulation
@@ -540,6 +606,30 @@ function ClientNPCManager.ListenForPositionUpdates()
 		end
 		-- If we ARE simulating this NPC, ignore network updates completely
 		-- Our local simulation is the source of truth
+	end)
+
+	-- Optimized: Listen for batched position updates
+	NPC_Service.NPCBatchPositionUpdated:Connect(function(batchedUpdates)
+		-- Validate input
+		if type(batchedUpdates) ~= "table" then
+			return
+		end
+
+		-- Process all updates in the batch
+		for npcID, updateData in pairs(batchedUpdates) do
+			-- Validate data structure
+			if type(npcID) ~= "string" or type(updateData) ~= "table" then
+				continue
+			end
+
+			-- CRITICAL: Only update if we're NOT simulating this NPC ourselves
+			-- This prevents race conditions where network updates overwrite local simulation
+			if not SimulatedNPCs[npcID] then
+				ClientNPCManager.UpdateRemoteNPCPosition(npcID, updateData.Position, updateData.Orientation)
+			end
+			-- If we ARE simulating this NPC, ignore network updates completely
+			-- Our local simulation is the source of truth
+		end
 	end)
 end
 

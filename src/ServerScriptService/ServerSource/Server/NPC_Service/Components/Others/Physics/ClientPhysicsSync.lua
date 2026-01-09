@@ -124,6 +124,157 @@ function ClientPhysicsSync.HandlePositionUpdate(fromPlayer, npcID, newPosition, 
 end
 
 --[[
+	Handle batched position updates from client (OPTIMIZED)
+
+	Processes multiple NPC updates in a single network call, then batches
+	broadcasts to nearby clients. This reduces network overhead significantly.
+
+	@param fromPlayer Player - The player sending the updates
+	@param batchedUpdates table - {[npcID] = {Position = Vector3, Orientation = CFrame?}, ...}
+]]
+function ClientPhysicsSync.HandleBatchPositionUpdate(fromPlayer, batchedUpdates)
+	-- Validate input table
+	if type(batchedUpdates) ~= "table" then
+		return
+	end
+
+	local ActiveNPCsFolder = ReplicatedStorage:FindFirstChild("ActiveNPCs")
+	if not ActiveNPCsFolder then
+		return
+	end
+
+	-- Collect all valid updates for batched broadcast
+	local validUpdates = {}
+	local now = tick()
+
+	for npcID, updateData in pairs(batchedUpdates) do
+		-- Validate npcID is a string
+		if type(npcID) ~= "string" then
+			continue
+		end
+
+		-- Validate updateData is a table with required fields
+		if type(updateData) ~= "table" then
+			continue
+		end
+
+		local newPosition = updateData.Position
+		local newOrientation = updateData.Orientation
+
+		-- Validate position is a Vector3
+		if typeof(newPosition) ~= "Vector3" then
+			continue
+		end
+
+		-- Validate orientation is CFrame or nil
+		if newOrientation ~= nil and typeof(newOrientation) ~= "CFrame" then
+			continue
+		end
+
+		-- Validate NPC folder exists
+		local npcFolder = ActiveNPCsFolder:FindFirstChild(npcID)
+		if not npcFolder then
+			continue
+		end
+
+		-- Check if this player owns the NPC (or if unclaimed, auto-assign)
+		local currentOwner = NPCOwnership[npcID]
+		if currentOwner and currentOwner ~= fromPlayer then
+			-- Another player owns this NPC, ignore update
+			continue
+		end
+
+		if not currentOwner then
+			-- Auto-assign ownership on first update
+			NPCOwnership[npcID] = fromPlayer
+		end
+
+		-- Apply soft bounds check if enabled
+		if OptimizationConfig.ExploitMitigation.SOFT_BOUNDS_ENABLED then
+			newPosition = ClientPhysicsSync.SoftBoundsCheck(npcID, newPosition)
+		end
+
+		-- Update position in ReplicatedStorage
+		local positionValue = npcFolder:FindFirstChild("Position")
+		if positionValue then
+			positionValue.Value = newPosition
+		end
+
+		-- Update orientation if provided
+		if newOrientation then
+			local orientationValue = npcFolder:FindFirstChild("Orientation")
+			if orientationValue then
+				orientationValue.Value = newOrientation
+			end
+		end
+
+		-- Track position and update time
+		NPCPositions[npcID] = newPosition
+		LastUpdateTimes[npcID] = now
+
+		-- CRITICAL FIX: Update NPC data in service registry
+		-- The server-side Tower Defense test reads from this data!
+		if NPC_Service and NPC_Service.ActiveClientPhysicsNPCs then
+			local npcData = NPC_Service.ActiveClientPhysicsNPCs[npcID]
+			if npcData then
+				npcData.Position = newPosition
+				if newOrientation then
+					npcData.Orientation = newOrientation
+				end
+			end
+		end
+
+		-- Collect for batched broadcast
+		validUpdates[npcID] = {
+			Position = newPosition,
+			Orientation = newOrientation,
+		}
+	end
+
+	-- Batched broadcast to nearby clients
+	if next(validUpdates) then
+		ClientPhysicsSync.BatchBroadcastToNearbyClients(validUpdates, fromPlayer)
+	end
+end
+
+--[[
+	Broadcast multiple position updates to nearby clients in a single call
+
+	@param updates table - {[npcID] = {Position, Orientation}, ...}
+	@param excludePlayer Player? - Player to exclude from broadcast
+]]
+function ClientPhysicsSync.BatchBroadcastToNearbyClients(updates, excludePlayer)
+	local broadcastDistance = OptimizationConfig.ClientSimulation.BROADCAST_DISTANCE
+
+	for _, player in pairs(Players:GetPlayers()) do
+		if player == excludePlayer then
+			continue
+		end
+
+		local character = player.Character
+		if not character or not character.PrimaryPart then
+			continue
+		end
+
+		local playerPosition = character.PrimaryPart.Position
+
+		-- Filter updates to only those within broadcast distance of this player
+		local nearbyUpdates = {}
+		for npcID, updateData in pairs(updates) do
+			local distance = (playerPosition - updateData.Position).Magnitude
+			if distance <= broadcastDistance then
+				nearbyUpdates[npcID] = updateData
+			end
+		end
+
+		-- Send batch to this player if any NPCs are nearby
+		if next(nearbyUpdates) then
+			NPC_Service.Client.NPCBatchPositionUpdated:Fire(player, nearbyUpdates)
+		end
+	end
+end
+
+--[[
 	Soft bounds check - clamps position instead of rejecting
 
 	@param npcID string - The NPC ID
