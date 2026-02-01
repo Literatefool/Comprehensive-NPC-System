@@ -1,0 +1,52 @@
+# Roblox Studio
+*.rbxl.lock
+*.rbxlx.lock
+
+# Rojo
+*.rbxlx
+*.rbxm
+*.rbxmx
+
+# Build artifacts
+/build/
+/dist/
+
+# OS Files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# IDE
+.vscode/
+.idea/
+*.sublime-*
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Dependencies
+node_modules/
+/Packages/
+
+# Temporary files
+*.tmp
+*.temp
+/tmp/
+.temp/
+
+# Wally
+/DevPackages/
+
+# Foreman
+/.foreman/
+
+# Test artifacts
+/TestResults/
+
+# Personal notes
+notes.md
+TODO.md
+.scratch/

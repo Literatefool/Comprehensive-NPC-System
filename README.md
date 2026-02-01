@@ -623,6 +623,12 @@ Client-side rendering can be configured in `src/ReplicatedStorage/SharedSource/D
 
 This is an open-source project. Contributions are welcome!
 
+### Getting Started with Development
+
+- **[DEVELOPMENT.md](DEVELOPMENT.md)** - Setup guide and development workflow
+- **[CONTRIBUTING.md](CONTRIBUTING.md)** - Contribution guidelines and standards
+- **[CLAUDE.md](CLAUDE.md)** - Architecture conventions and coding style
+
 ### Areas for Contribution
 
 - Implement OptimizedHitbox batch detection
@@ -640,6 +646,13 @@ This is an open-source project. Contributions are welcome!
 - Test with large NPC counts (100+)
 - Consider both PvE and PvP use cases
 
+### Reporting Issues
+
+Use our GitHub issue templates for:
+- **Bug Reports** - Report issues with the NPC system
+- **Feature Requests** - Suggest new features or enhancements
+- **Documentation** - Report documentation issues
+
 ---
 
 ## 🔗 Links
@@ -654,10 +667,17 @@ This is an open-source project. Contributions are welcome!
 
 If you encounter issues or have questions:
 
-1. Check the test scripts for examples
-2. Review the configuration parameters
-3. Read the future implementation plans
-4. Open an issue on GitHub
+1. **[Read the documentation](DEVELOPMENT.md)** - Development setup and guides
+2. **[Check the test scripts](src/ServerScriptService/)** - Examples for common scenarios
+3. **[Review configuration parameters](#%EF%B8%8F-configuration)** - Understand available options
+4. **[Open an issue](https://github.com/Literatefool/Comprehensive-NPC-System/issues/new/choose)** - Report bugs or request features
+
+### Documentation Resources
+
+- **[CLAUDE.md](CLAUDE.md)** - Architecture and coding conventions
+- **[CONTRIBUTING.md](CONTRIBUTING.md)** - How to contribute to the project
+- **[DEVELOPMENT.md](DEVELOPMENT.md)** - Setup and development workflow
+- **[System Architecture](src/ReplicatedStorage/SharedSource/Datas/NPCs/Documentations/System_Architecture.md)** - Technical architecture details
 
 ---
 
