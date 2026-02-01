@@ -181,12 +181,14 @@ local RenderConfig = {
     -- ... other settings ...
     
     -- Show pathfinding waypoints (blue/yellow/red dots along NPC paths)
-    SHOW_PATH_VISUALIZER = false,  -- Set to false to disable
+    SHOW_PATH_VISUALIZER = false,  -- Change from true to false to disable
     
     -- Show sight range visualization (cones/spheres for NPC vision)
-    SHOW_SIGHT_VISUALIZER = false,  -- Set to false to disable
+    SHOW_SIGHT_VISUALIZER = false,  -- Change from true to false to disable
 }
 ```
+
+**Note:** By default, both visualizers are enabled (`true`). Change to `false` for production or performance testing.
 
 ## Development Workflow
 
