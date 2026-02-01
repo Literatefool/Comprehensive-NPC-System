@@ -301,7 +301,7 @@ NPC ignores player completely.
 [None in console]
 
 **Environment:**
-- Roblox Studio: 0.543.0.5430543
+- Roblox Studio: 0.543.0.123456
 - OS: Windows 11
 - Commit: abc1234
 ```

@@ -43,7 +43,7 @@ Paste any error messages or console output here
 
 ## Environment
 
-- **Roblox Studio Version:** [e.g., 0.543.0.5430543]
+- **Roblox Studio Version:** [e.g., 0.543.0.123456]
 - **Operating System:** [e.g., Windows 11, macOS 13]
 - **Repository Commit:** [e.g., abc1234]
 - **Installation Method:** [Rojo / RBXL file / SuperbulletAI]

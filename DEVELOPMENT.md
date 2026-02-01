@@ -63,7 +63,7 @@ rojo serve
 
 2. **Install Rojo:**
    ```bash
-   # Using Aftman (recommended)
+   # Using Aftman (recommended - install from https://github.com/LPGhatguy/aftman)
    aftman install
 
    # Or manually download from rojo.space
@@ -178,13 +178,13 @@ For performance testing, disable debug visualizers:
 **Sight Visualizer:**
 ```lua
 -- src/ServerScriptService/ServerSource/Server/NPC_Service/Components/Others/SightVisualizer.lua
-local VISUALIZER_ENABLED = false  -- Line 8
+local VISUALIZER_ENABLED = false  -- Near the top of the file
 ```
 
 **Pathfinding Visualizer:**
 ```lua
 -- src/ServerScriptService/ServerSource/Server/NPC_Service/Components/Others/PathfindingManager.lua
-local SHOW_PATH_VISUALIZER = false  -- Line 13
+local SHOW_PATH_VISUALIZER = false  -- Near the top of the file
 ```
 
 ## Development Workflow
