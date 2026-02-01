@@ -670,7 +670,7 @@ If you encounter issues or have questions:
 1. **[Read the documentation](DEVELOPMENT.md)** - Development setup and guides
 2. **[Check the test scripts](src/ServerScriptService/)** - Examples for common scenarios
 3. **[Review configuration parameters](#%EF%B8%8F-configuration)** - Understand available options
-4. **[Open an issue](https://github.com/Literatefool/Comprehensive-NPC-System/issues/new/choose)** - Report bugs or request features
+4. **[Open an issue](https://github.com/Froredion/Comprehensive-NPC-System/issues/new/choose)** - Report bugs or request features
 
 ### Documentation Resources
 

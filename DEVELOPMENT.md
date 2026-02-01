@@ -124,7 +124,7 @@ Comprehensive-NPC-System/
 - **`default.project.json`** - Rojo project configuration
 - **`wally.toml`** - Package dependencies (Knit, Promise, etc.)
 - **`src/ServerScriptService/KnitServer.server.lua`** - Entry point for server
-- **`src/ReplicatedStorage/ClientSource/Client/KnitClient.client.lua`** - Entry point for client
+- **`src/StarterPlayer/StarterPlayerScripts/KnitClient.client.lua`** - Entry point for client
 
 ## Building and Testing
 
@@ -173,18 +173,19 @@ print("Test NPC spawned:", testNPC)
 
 ### Disabling Visualizers
 
-For performance testing, disable debug visualizers:
+For performance testing, disable debug visualizers in RenderConfig:
 
-**Sight Visualizer:**
 ```lua
--- src/ServerScriptService/ServerSource/Server/NPC_Service/Components/Others/SightVisualizer.lua
-local VISUALIZER_ENABLED = false  -- Near the top of the file
-```
-
-**Pathfinding Visualizer:**
-```lua
--- src/ServerScriptService/ServerSource/Server/NPC_Service/Components/Others/PathfindingManager.lua
-local SHOW_PATH_VISUALIZER = false  -- Near the top of the file
+-- src/ReplicatedStorage/SharedSource/Datas/NPCs/RenderConfig.lua
+local RenderConfig = {
+    -- ... other settings ...
+    
+    -- Show pathfinding waypoints (blue/yellow/red dots along NPC paths)
+    SHOW_PATH_VISUALIZER = false,  -- Set to false to disable
+    
+    -- Show sight range visualization (cones/spheres for NPC vision)
+    SHOW_SIGHT_VISUALIZER = false,  -- Set to false to disable
+}
 ```
 
 ## Development Workflow

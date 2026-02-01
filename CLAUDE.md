@@ -77,7 +77,7 @@ This project uses a **modified Knit framework** with component-based architectur
 1. **Services should use Component pattern when > 300 lines**
 2. **Group related functionality in Others/ components**
 3. **Keep init.lua as coordinator, not implementation**
-4. **Use ONLY ONE principle for feature additions**
+4. **Apply the "ONLY ONE" principle** - Each feature/change should have one clear purpose and be implemented in a single, focused task (e.g., create ONLY a player data service, then ONLY an inventory service in separate changes)
 
 ### Documentation Standards
 
